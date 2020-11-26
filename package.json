@@ -1,0 +1,46 @@
+{
+  "name": "rainforest-js",
+  "version": "0.1.1",
+  "description": "rainforest-js",
+  "author": "muchan92",
+  "license": "MIT",
+  "types": "dist/rainforest-js.d.ts",
+  "main": "dist/rainforest-js.cjs.js",
+  "module": "dist/rainforest-js.esm.js",
+  "unpkg": "dist/rainforest-js.min.js",
+  "jsdelivr": "dist/rainforest-js.min.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "rm -rf dist/* && rollup -c && api-extractor run && rm -rf dist/src",
+    "test": "jest",
+    "lint": "eslint --ext .ts src",
+    "prepare": "yarn build && yarn test"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^11.0.0",
+    "@commitlint/config-conventional": "^11.0.0",
+    "@microsoft/api-extractor": "^7.12.0",
+    "@types/jest": "^26.0.14",
+    "@typescript-eslint/eslint-plugin": "^4.2.0",
+    "@typescript-eslint/parser": "^4.2.0",
+    "eslint": "^7.10.0",
+    "eslint-config-prettier": "^6.12.0",
+    "husky": "^4.3.0",
+    "jest": "^26.4.2",
+    "lint-staged": "^10.4.0",
+    "prettier": "^2.2.0",
+    "rollup": "^2.33.2",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.29.0",
+    "ts-jest": "^26.4.0",
+    "typescript": "^4.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rainforesters/rainforest-js"
+  },
+  "homepage": "https://github.com/rainforesters/rainforest-js"
+}
