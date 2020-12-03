@@ -136,6 +136,7 @@ interface _TypeDesc {
 
 	[syl_body]: Record<string, TypeDesc> // struct 字段集合
 	[syl_observers]: Map<any, ObserveFieldNodeDesc> // 注册的函数集合
+	[syl_accept]: Set<TypeDesc> // 能够认可的类型集合
 	[syl_proto]: ProtoDesc // struct 原型描述
 	[syl_class]: FunctionConstructor
 }
@@ -178,7 +179,7 @@ function TypeDesc_kind(self: TypeDesc) {
 
 const enum Flag {
 	adjust = 1, // 对数据进行修正
-	alone = 2, // 只校验当前自身的类型描述
+	self = 2, // 只校验当前自身的类型描述
 }
 
 function TypeDesc_check(
@@ -211,7 +212,7 @@ function TypeDesc_check(
 			const ts = self[syl_type]
 			const l = ts.length
 			let i = 1
-			if (flag & Flag.alone) {
+			if (flag & Flag.self) {
 				// 只校验当前自身的类型描述
 				i = l
 			} else {
@@ -290,14 +291,14 @@ function TypeDesc_prepare(
 	accepted: TypeDesc
 ): any {
 	if (isLiteral) {
-		val = TypeDesc_check(self, val, Flag.adjust | Flag.alone, accepted)
+		val = TypeDesc_check(self, val, Flag.adjust | Flag.self, accepted)
 	} else {
 		if (mock && self[syl_mock]) {
 			val = TypeDesc_check2(self, val, Flag.adjust, accepted, syl_mock)
 		} else if (self[syl_value]) {
 			val = TypeDesc_check2(self, val, Flag.adjust, accepted, syl_value)
 		} else {
-			val = TypeDesc_check(self, val, Flag.adjust, accepted)
+			val = TypeDesc_check(self, val, Flag.adjust | Flag.self, accepted)
 		}
 	}
 	if (isNotnil(val)) {
@@ -397,14 +398,7 @@ function TypeDesc_init(
 			Object.setPrototypeOf(ret, proto)
 			Object.defineProperties(ret, proto[syl_proto])
 			// 设置能够认可的类型集合
-			const accept = hideProp(ret, syl_accept, new Set<TypeDesc>())
-			const ts = accepted[syl_type]
-			if (ts) {
-				for (const v of ts) {
-					accept.add(v)
-				}
-			}
-			accept.add(accepted)
+			hideProp(ret, syl_accept, accepted[syl_accept])
 			// 构造虚拟的字段容器
 			const virtual: VirtualValue[] = hideProp(ret, syl_virtual, [])
 			const bd = self[syl_body]
@@ -542,7 +536,7 @@ function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
 		if (!isString(name) || !RE_name.test(name)) {
 			throw Error('name is invalid')
 		}
-		tdesc = <TypeDesc>(<any>new (defineClass('T_' + name, TypeDesc))())
+		tdesc = <TypeDesc>(<any>new (defineClass(name, TypeDesc))())
 	} else {
 		tdesc = <TypeDesc>new TypeDesc()
 	}
@@ -560,19 +554,22 @@ function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
 	tdesc[syl_retain] = toFunc(desc[at_retain], at_retain)
 	tdesc[syl_release] = toFunc(desc[at_release], at_release)
 	if (tt) {
+		tdesc[syl_type] =
+			tt[syl_kind] === Kind.decorate ? tt[syl_type].concat(tt) : [tt]
 		switch (TypeDesc_kind(tt)) {
 			case Kind.any:
 				// 如果原 type 是手动变更的，则之后的也是
 				tdesc[syl_change] = tt[syl_change] || !!desc[at_change]
-			// falls through
-			case Kind.struct:
 				tdesc[syl_noinit] = tt[syl_noinit] || !!desc[at_noinit]
 				break
+			case Kind.struct:
+				tdesc[syl_noinit] = tt[syl_noinit] || !!desc[at_noinit]
+				tdesc[syl_accept] = new Set<TypeDesc>(tdesc[syl_type]).add(tdesc)
+				break
 		}
-		tdesc[syl_type] =
-			tt[syl_kind] === Kind.decorate ? tt[syl_type].concat(tt) : [tt]
 	} else {
 		tdesc[syl_noinit] = !!desc[at_noinit]
+		tdesc[syl_accept] = new Set<TypeDesc>().add(tdesc)
 		const c = desc[at_class]
 		if (c) {
 			if (!isFunc(c)) {
@@ -580,7 +577,7 @@ function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
 			}
 			tdesc[syl_class] = c
 		} else {
-			tdesc[syl_class] = name ? defineClass('S_' + name, Struct) : <any>Struct
+			tdesc[syl_class] = name ? defineClass(name, Struct) : <any>Struct
 		}
 		if (TypeDesc_body(tdesc, desc)) {
 			TypeDesc_proto(tdesc)
@@ -770,7 +767,6 @@ function VirtualValue_set(self: VirtualValue, val: any, struct: Struct) {
 					// 为新值分发观察者
 					ObserveNode_distribute(n, self)
 					if (++count === dist) {
-						// count = 0
 						break
 					}
 				}
@@ -800,6 +796,11 @@ function VirtualValue_set(self: VirtualValue, val: any, struct: Struct) {
 	for (const n of observers) {
 		if (!n.diff || diff) {
 			if (!n.notnil || notnil) {
+				if (n.children && notnil) {
+					if (!ObserveNode_check(n)) {
+						continue
+					}
+				}
 				ObserveNode_dispatch(n)
 			}
 		}
@@ -829,6 +830,31 @@ function ObserveNode_dispatch(self: ObserveNode) {
 		arr.length = 0
 	}
 	self.running = false
+}
+
+function ObserveNode_check(self: ObserveNode) {
+	if (!self.notnil) {
+		return true
+	}
+	const { children, virtual } = self
+	const val = virtual.value
+	if (children) {
+		if (val) {
+			let bitmap = 0
+			const { test, or } = self
+			for (const n of children) {
+				if (ObserveNode_check(n)) {
+					bitmap |= 1 << n.bit
+					if (bitmap === test || or) {
+						return true
+					}
+				}
+			}
+		}
+	} else if (isNotnil(val)) {
+		return true
+	}
+	return false
 }
 
 // 分发观察者

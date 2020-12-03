@@ -1520,6 +1520,56 @@ describe('type', () => {
 		}).toThrow()
 	})
 
+	test('check substructure conditions when assigning to structure', () => {
+		const A = typedef({
+			sub: typedef({
+				input: string,
+				arg: any,
+			}),
+		})
+		const tdesc = typedef({
+			a: A,
+			output: string,
+		})
+		funcdef(
+			tdesc,
+			'func',
+			{
+				a: {
+					'@notnil': true,
+					sub: {
+						'@notnil': true,
+						input: { '@notnil': true },
+						arg: { '@notnil': true },
+					},
+				},
+			},
+			(self: any) => {
+				self.output = self.a.sub.input
+			}
+		)
+		const a = typeinit(A)
+		const sub = a.sub
+		sub.input = 'test'
+		sub.arg = 1
+		a.sub = null
+		const ret = typeinit(tdesc)
+		ret.a = a
+		expect(ret.output).toBe('')
+		a.sub = sub
+		expect(ret.output).toBe('test')
+		ret.output = ''
+		ret.a = null
+		expect(ret.output).toBe('')
+		sub.arg = null
+		ret.a = a
+		expect(ret.output).toBe('')
+		sub.arg = 2
+		expect(ret.output).toBe('')
+		ret.a = a
+		expect(ret.output).toBe('test')
+	})
+
 	test('infinite loop', () => {
 		expect.assertions(1)
 		const tdesc = typedef({
