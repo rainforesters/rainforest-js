@@ -171,7 +171,7 @@ interface _TypeDesc {
 
 	[syl_body]: Record<string, TypeDesc> // struct 字段集合
 	[syl_observers]: Map<any, ObserveFieldNodeDesc> // 注册的函数集合
-	[syl_accept]: Set<TypeDesc> // 能够认可的类型集合
+	[syl_accept]: Set<TypeDesc> // 能够认可的类型描述集合
 	[syl_proto]: ProtoDesc // struct 原型描述
 	[syl_class]: FunctionConstructor
 }
@@ -186,8 +186,8 @@ const TypeDesc = class TypeDesc {}
 interface _Struct {
 	[k: string]: any
 	[syl_virtual]: VirtualValue[] // 虚拟字段值
-	[syl_accept]: Set<TypeDesc> // 能够认可的类型集合
 	[syl_observers]: Map<any, ObserveNode>
+	[syl_init]: TypeDesc // 初始化时的类型描述（可能是修饰后的类型描述）
 
 	[syl_type]: TypeDesc
 }
@@ -229,7 +229,7 @@ function TypeDesc_check(
 				if (!isStruct(val)) {
 					throw TypeError('expected struct')
 				}
-				if (!val[syl_accept].has(accepted)) {
+				if (!val[syl_init][syl_accept].has(accepted)) {
 					if (val[syl_type] !== self) {
 						throw TypeError('type mismatch')
 					}
@@ -435,8 +435,8 @@ function TypeDesc_init(
 			const proto = TypeDesc_proto(self)
 			Object.setPrototypeOf(ret, proto)
 			Object.defineProperties(ret, proto[syl_proto])
-			// 设置能够认可的类型集合
-			hideProp(ret, syl_accept, accepted[syl_accept])
+			// 设置初始化时的类型描述
+			hideProp(ret, syl_init, accepted)
 			// 构造虚拟的字段容器
 			const virtual: VirtualValue[] = hideProp(ret, syl_virtual, [])
 			const bd = self[syl_body]
@@ -750,6 +750,21 @@ export function structbody(tdesc: TypeDesc): Record<string, TypeDesc> {
 	}
 	TypeDesc_proto(tdesc)
 	return tdesc[syl_body]
+}
+
+/**
+ * 返回结构体实例的类型描述
+ *
+ * @param struct - 结构体实例
+ * @returns 返回类型描述
+ *
+ * @public
+ */
+export function structof(struct: Struct): TypeDesc {
+	if (!isStruct(struct)) {
+		throw TypeError('type is not struct')
+	}
+	return struct[syl_init]
 }
 
 interface ObserveFieldNodeDesc {

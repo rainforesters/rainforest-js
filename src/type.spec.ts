@@ -11,6 +11,7 @@ import {
 	typedef,
 	typeinit,
 	structbody,
+	structof,
 	outcome,
 	change,
 	bool,
@@ -69,24 +70,17 @@ describe('type', () => {
 	})
 
 	test('define new type with invalid description', () => {
-		expect(() => {
-			typedef(null)
-		}).toThrow()
-		expect(() => {
-			typedef({
-				name: String,
-			})
-		}).toThrow()
-		expect(() => {
-			typedef({
-				'1': string,
-			})
-		}).toThrow()
-		expect(() => {
-			typedef({
-				'-name': string,
-			})
-		}).toThrow()
+		;[
+			void 0,
+			null,
+			{ name: String },
+			{ '-name': string },
+			{ '1': string },
+		].forEach((v) => {
+			expect(() => {
+				typedef(v)
+			}).toThrow()
+		})
 	})
 
 	test('define new type with a wrong type', () => {
@@ -106,16 +100,18 @@ describe('type', () => {
 	})
 
 	test('define new type with invalid name', () => {
-		expect(() => {
-			typedef({
+		;[
+			{
 				'@name': 1,
-			})
-		}).toThrow()
-		expect(() => {
-			typedef({
+			},
+			{
 				'@name': '_name',
-			})
-		}).toThrow()
+			},
+		].forEach((v) => {
+			expect(() => {
+				typedef(v)
+			}).toThrow()
+		})
 	})
 
 	test('cannot redefine a struct if it has fields', () => {
@@ -151,31 +147,27 @@ describe('type', () => {
 	})
 
 	test('get body of struct with wrong type', () => {
-		expect(() => {
-			structbody(<any>{})
-		}).toThrow()
-		expect(() => {
-			structbody(
-				typedef({
-					'@type': any,
-				})
-			)
-		}).toThrow()
+		;[
+			true,
+			1,
+			'test',
+			{},
+			typedef({
+				'@type': any,
+			}),
+		].forEach((v: any) => {
+			expect(() => {
+				structbody(v)
+			}).toThrow()
+		})
 	})
 
 	test('initialize with wrong type', () => {
-		expect(() => {
-			typeinit(<any>true)
-		}).toThrow()
-		expect(() => {
-			typeinit(<any>1)
-		}).toThrow()
-		expect(() => {
-			typeinit(<any>'test')
-		}).toThrow()
-		expect(() => {
-			typeinit(<any>{})
-		}).toThrow()
+		;[true, 1, 'test', {}].forEach((v: any) => {
+			expect(() => {
+				typeinit(v)
+			}).toThrow()
+		})
 	})
 
 	test('decorate bool', () => {
@@ -229,6 +221,24 @@ describe('type', () => {
 		expect(tdesc).not.toBe(A)
 		expect(structbody(tdesc)).toBe(structbody(A))
 		expect(typeinit(tdesc)).toStrictEqual(typeinit(A))
+	})
+
+	test('get the type of structure instance', () => {
+		const A = typedef({
+			name: string,
+		})
+		const B = typedef({
+			'@type': A,
+		})
+		const a = typeinit(A)
+		expect(structof(a)).toBe(A)
+		const b = typeinit(B)
+		expect(structof(b)).toBe(B)
+		;[true, 1, 'test', {}, A].forEach((v: any) => {
+			expect(() => {
+				structof(v)
+			}).toThrow()
+		})
 	})
 
 	test('mock bool', () => {
