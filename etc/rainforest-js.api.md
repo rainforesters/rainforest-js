@@ -23,7 +23,7 @@ export function change(obj: any): void;
 export const float64: TypeDesc;
 
 // @public
-export function funcdef(obj: TypeDesc | Struct, name: any, observe: any, func: Function): void;
+export function funcdef(tdesc: TypeDesc, name: any, observe: any, func: Function): void;
 
 // @public (undocumented)
 export const int32: TypeDesc;
@@ -32,7 +32,7 @@ export const int32: TypeDesc;
 export const object: TypeDesc;
 
 // @public
-export function outcome(obj: Struct, name?: any): Promise<unknown>;
+export function outcome(struct: Struct, name?: any): Promise<unknown>;
 
 // @public (undocumented)
 export const string: TypeDesc;
@@ -47,6 +47,9 @@ export interface Struct extends _Struct {
 export function structbody(tdesc: TypeDesc): Record<string, TypeDesc>;
 
 // @public
+export function structof(struct: Struct): TypeDesc;
+
+// @public
 export function typedef(desc: any, tdesc?: TypeDesc): TypeDesc;
 
 // Warning: (ae-forgotten-export) The symbol "_TypeDesc" needs to be exported by the entry point index.d.ts
@@ -57,6 +60,9 @@ export interface TypeDesc extends _TypeDesc {
 
 // @public
 export function typeinit(tdesc: TypeDesc, literal?: any): any;
+
+// @public
+export function wrapval(desc: any, val?: any): any;
 
 
 // (No @packageDocumentation comment for this package)
