@@ -1029,7 +1029,7 @@ function ObserveFieldNodeDesc_init(tdesc: TypeDesc, body: any, name: string) {
 /**
  * 定义函数
  *
- * @param obj     - 类型描述或结构体实例
+ * @param tdesc   - 类型描述
  * @param name    - 函数名
  * @param observe - 描述需要观察的字段规则
  * @param func    - 当待观察的字段符合描述的规则时触发该函数
@@ -1060,23 +1060,18 @@ function ObserveFieldNodeDesc_init(tdesc: TypeDesc, body: any, name: string) {
  * @public
  */
 export function funcdef(
-	obj: TypeDesc | Struct,
+	tdesc: TypeDesc,
 	name: any,
 	observe: any,
 	func: Function
 ): void {
-	let tdesc: TypeDesc
-	if (isTypeDesc(obj)) {
-		if (TypeDesc_kind(obj) !== Kind.struct) {
-			throw TypeError('type is not struct')
-		}
-		tdesc = obj
-		TypeDesc_proto(tdesc)
-	} else if (isStruct(obj)) {
-		tdesc = obj[syl_type]
-	} else {
+	if (!isTypeDesc(tdesc)) {
+		throw TypeError('type is wrong')
+	}
+	if (TypeDesc_kind(tdesc) !== Kind.struct) {
 		throw TypeError('type is not struct')
 	}
+	TypeDesc_proto(tdesc)
 	if (!isFunc(func)) {
 		throw Error('func is invalid')
 	}
@@ -1091,16 +1086,10 @@ export function funcdef(
 	} else if ((!isString(name) && !isObject(name)) || isWrapValue(name)) {
 		throw Error('name is invalid')
 	}
-	if (!obj[syl_observers]) {
-		hideProp(
-			obj,
-			syl_observers,
-			tdesc === obj
-				? new Map<any, ObserveFieldNodeDesc>()
-				: new Map<any, ObserveNode>()
-		)
+	if (!tdesc[syl_observers]) {
+		tdesc[syl_observers] = new Map<any, ObserveFieldNodeDesc>()
 	}
-	if (obj[syl_observers].has(name)) {
+	if (tdesc[syl_observers].has(name)) {
 		throw Error(`func '${name}' has already been defined`)
 	} else if (tdesc[syl_kind] === Kind.decorate) {
 		for (const v of tdesc[syl_type]) {
@@ -1114,35 +1103,14 @@ export function funcdef(
 	if (!fdesc.children) {
 		throw Error('observe has no fields')
 	}
-	if (tdesc === obj) {
-		tdesc[syl_observers].set(name, fdesc)
-	} else {
-		// 直接附加在 Struct 上
-		const struct = <Struct>obj
-		const map = struct[syl_observers]
-		const virtual: VirtualValue = map.size
-			? map.values().next().value.virtual
-			: {
-					name: '',
-					value: struct,
-					observers: new Set<ObserveNode>(),
-					type: null!,
-					dist: 0,
-			  }
-		const node = ObserveNode_init(fdesc)
-		node.func = fdesc.func
-		node.virtual = virtual
-		node.running = false
-		map.set(name, node)
-		ObserveNode_distribute(node, virtual)
-	}
+	tdesc[syl_observers].set(name, fdesc)
 }
 
 /**
  * 获取预期函数结果
  *
- * @param obj  - 结构体实例
- * @param name - 函数名，如果未指定则默认获取第一个函数
+ * @param struct - 结构体实例
+ * @param name   - 函数名，如果未指定则默认获取第一个函数
  * @returns 返回函数结果的 Promise
  *
  * @example
@@ -1167,13 +1135,13 @@ export function funcdef(
  *
  * @public
  */
-export function outcome(obj: Struct, name?: any): Promise<unknown> {
-	if (!isStruct(obj)) {
+export function outcome(struct: Struct, name?: any): Promise<unknown> {
+	if (!isStruct(struct)) {
 		throw TypeError('type is not struct')
 	}
 	const node: ObserveNode = name
-		? obj[syl_observers]?.get(name)
-		: obj[syl_observers]?.values().next().value
+		? struct[syl_observers]?.get(name)
+		: struct[syl_observers]?.values().next().value
 	if (!node) {
 		throw Error(`func '${name}' is not defined`)
 	}

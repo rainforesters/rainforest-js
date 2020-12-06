@@ -925,50 +925,6 @@ describe('type', () => {
 		expect(ret.result).toBe('a-b-c')
 	})
 
-	test('define a function on an instance of struct', () => {
-		const tdesc = typedef({
-			arg1: int32,
-			arg2: int32,
-			out: string,
-		})
-		const ret = typeinit(tdesc)
-		funcdef(
-			ret,
-			'func',
-			{
-				arg1: true,
-				arg2: true,
-			},
-			(self: any) => {
-				self.out = `${self.arg1}-${self.arg2}`
-			}
-		)
-		expect(ret.out).toBe('')
-		ret.arg1 = 1
-		expect(ret.out).toBe('')
-		ret.arg2 = 2
-		expect(ret.out).toBe('1-2')
-
-		funcdef(
-			tdesc,
-			'func',
-			{
-				arg1: true,
-				arg2: true,
-			},
-			(self: any) => self
-		)
-		funcdef(
-			typeinit(tdesc),
-			'func2',
-			{
-				arg1: true,
-				arg2: true,
-			},
-			(self: any) => self
-		)
-	})
-
 	test('define a function on substructure', () => {
 		const tdesc = typedef({
 			arg1: int32,
