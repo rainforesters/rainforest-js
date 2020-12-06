@@ -27,6 +27,7 @@ const at_name = '@name',
 	at_class = '@class'
 
 const syl_name = Symbol(),
+	syl_desc = Symbol('desc'),
 	syl_kind = Symbol('kind'),
 	syl_type = Symbol('type'),
 	syl_mock = Symbol('mock'),
@@ -45,6 +46,7 @@ const syl_name = Symbol(),
 	syl_accept = Symbol('accept'),
 	syl_observers = Symbol('observers'),
 	syl_outcome = Symbol('outcome'),
+	syl_wrap = Symbol('wrap'),
 	syl_class = Symbol('class')
 
 const changeMap = new WeakMap<any, Set<VirtualValue>>()
@@ -99,6 +101,39 @@ function isObject(v: any): boolean {
 
 function isNotnil(v: any): boolean {
 	return null !== v && void 0 !== v
+}
+
+interface WrapValue {
+	[syl_wrap]: true
+	[syl_desc]: any
+	[syl_value]: any
+}
+
+function isWrapValue(v: any): v is WrapValue {
+	return isObject(v) && syl_wrap in v
+}
+
+/**
+ * 使用描述来包装值
+ *
+ * @param desc - 描述说明
+ * @param val  - 被包装的值
+ * @returns 返回新的包装好的值
+ *
+ * @public
+ */
+export function wrapval(desc: any, val?: any): any {
+	if (!isObject(desc)) {
+		throw TypeError('description is invalid')
+	}
+	if (isWrapValue(val)) {
+		throw Error('cannot wrap the already wrapped value')
+	}
+	return {
+		[syl_wrap]: true,
+		[syl_desc]: desc,
+		[syl_value]: val,
+	}
 }
 
 interface ProtoDesc {
@@ -184,9 +219,9 @@ const enum Flag {
 
 function TypeDesc_check(
 	self: TypeDesc,
+	accepted: TypeDesc,
 	val: any,
-	flag: Flag,
-	accepted: TypeDesc
+	flag: Flag
 ) {
 	switch (self[syl_kind]) {
 		case Kind.struct:
@@ -205,7 +240,7 @@ function TypeDesc_check(
 			}
 			self[syl_verify]?.(val)
 			if (flag & Flag.adjust && self[syl_adjust]) {
-				val = TypeDesc_check2(self, val, 0, accepted, syl_adjust)
+				val = TypeDesc_check2(self, accepted, val, 0, syl_adjust)
 			}
 			break
 		case Kind.decorate: {
@@ -217,7 +252,7 @@ function TypeDesc_check(
 				i = l
 			} else {
 				// 首先校验原始的类型描述
-				val = TypeDesc_check(ts[0], val, flag, accepted)
+				val = TypeDesc_check(ts[0], accepted, val, flag)
 			}
 			let b = true
 			let t: TypeDesc
@@ -234,7 +269,7 @@ function TypeDesc_check(
 				}
 				t[syl_verify]?.(val)
 				if (flag & Flag.adjust && t[syl_adjust]) {
-					val = TypeDesc_check2(t, val, 0, accepted, syl_adjust)
+					val = TypeDesc_check2(t, accepted, val, 0, syl_adjust)
 				}
 			} while (b)
 			break
@@ -271,35 +306,34 @@ function TypeDesc_check(
 
 function TypeDesc_check2(
 	self: TypeDesc,
+	accepted: TypeDesc,
 	val: any,
 	flag: Flag,
-	accepted: TypeDesc,
 	syl: typeof syl_mock | typeof syl_value | typeof syl_adjust
 ) {
 	const newVal = self[syl](val)
 	if (val !== newVal || isObject(newVal)) {
-		val = TypeDesc_check(self, newVal, flag, accepted)
+		val = TypeDesc_check(self, accepted, newVal, flag)
 	}
 	return val
 }
 
 function TypeDesc_prepare(
 	self: TypeDesc,
+	accepted: TypeDesc,
 	val: any,
 	mock: boolean,
-	isLiteral: boolean,
-	accepted: TypeDesc
+	isLiteral: boolean
 ): any {
 	if (isLiteral) {
-		val = TypeDesc_check(self, val, Flag.adjust | Flag.self, accepted)
+		return TypeDesc_check(self, accepted, val, Flag.adjust | Flag.self)
+	}
+	if (mock && self[syl_mock]) {
+		val = TypeDesc_check2(self, accepted, val, Flag.adjust, syl_mock)
+	} else if (self[syl_value]) {
+		val = TypeDesc_check2(self, accepted, val, Flag.adjust, syl_value)
 	} else {
-		if (mock && self[syl_mock]) {
-			val = TypeDesc_check2(self, val, Flag.adjust, accepted, syl_mock)
-		} else if (self[syl_value]) {
-			val = TypeDesc_check2(self, val, Flag.adjust, accepted, syl_value)
-		} else {
-			val = TypeDesc_check(self, val, Flag.adjust | Flag.self, accepted)
-		}
+		val = TypeDesc_check(self, accepted, val, Flag.adjust | Flag.self)
 	}
 	if (isNotnil(val)) {
 		if (self[syl_observers]) {
@@ -328,24 +362,28 @@ function TypeDesc_prepare(
 				ObserveNode_distribute(node, virtual)
 			}
 		}
-		if (!isLiteral) {
-			self[syl_init]?.(val)
-		}
+		self[syl_init]?.(val)
 	}
 	return val
 }
 
 function TypeDesc_init(
 	self: TypeDesc,
-	circular: Set<TypeDesc>,
-	mock: boolean,
+	accepted: TypeDesc,
 	literal: any,
-	accepted: TypeDesc
+	circular: Set<TypeDesc>,
+	mock: boolean
 ): any {
 	let isLiteral = false
 	if (void 0 !== literal) {
-		if (isObject(literal) && at_mock in literal) {
-			mock = literal[at_mock]
+		if (isWrapValue(literal)) {
+			const desc = literal[syl_desc]
+			literal = literal[syl_value]
+			if (at_mock in desc) {
+				mock = desc[at_mock]
+			} else if (void 0 !== literal) {
+				isLiteral = true
+			}
 		} else {
 			isLiteral = true
 		}
@@ -361,11 +399,11 @@ function TypeDesc_init(
 				isLiteral = true
 				break
 			}
-			if (isLiteral) {
-				isLiteral = false
+			if (void 0 !== literal) {
 				if (!isObject(literal)) {
 					throw Error('expected struct')
 				}
+				isLiteral = false
 			}
 			if (!circular) {
 				circular = new Set<TypeDesc>()
@@ -408,7 +446,7 @@ function TypeDesc_init(
 				const v =
 					t[syl_noinit] && void 0 === l
 						? l
-						: TypeDesc_init(t, circular, mock, l, t)
+						: TypeDesc_init(t, t, l, circular, mock)
 				virtual.push({
 					name: k,
 					value: v,
@@ -427,23 +465,27 @@ function TypeDesc_init(
 			const ts = self[syl_type]
 			ret = TypeDesc_init(
 				ts[0],
-				circular,
-				mock,
+				accepted,
 				isLiteral ? literal : void 0,
-				accepted
+				circular,
+				mock
 			)
-			if (ts[0][syl_kind] === Kind.struct && !isNotnil(ret)) {
-				return ret
+			if (ts[0][syl_kind] === Kind.struct) {
+				if (void 0 === ret) {
+					// 因为循环引用，所以此时为 nil
+					return
+				}
+				isLiteral = literal === ret
 			}
 			// 遍历 1-n 进行处理
 			for (let i = 1, l = ts.length; i < l; i++) {
-				ret = TypeDesc_prepare(ts[i], ret, mock, isLiteral, accepted)
+				ret = TypeDesc_prepare(ts[i], accepted, ret, mock, isLiteral)
 			}
 			break
 		}
 		case Kind.primitive:
 			if (isLiteral) {
-				return TypeDesc_check(self, literal, 0, accepted)
+				return TypeDesc_check(self, accepted, literal, 0)
 			}
 			switch (self) {
 				case int32:
@@ -458,7 +500,7 @@ function TypeDesc_init(
 		case Kind.any:
 			return isLiteral ? literal : void 0
 	}
-	return TypeDesc_prepare(self, ret, mock, isLiteral, accepted)
+	return TypeDesc_prepare(self, accepted, ret, mock, isLiteral)
 }
 
 function TypeDesc_proto(self: TypeDesc): ProtoDesc {
@@ -469,13 +511,12 @@ function TypeDesc_proto(self: TypeDesc): ProtoDesc {
 	if (proto) {
 		return proto
 	}
-	const { [syl_body]: body, [syl_proto]: descs } = (proto = self[syl_proto] = <
-		ProtoDesc
-	>{
+	proto = self[syl_proto] = <ProtoDesc>{
 		[syl_type]: self,
 		[syl_body]: {},
 		[syl_proto]: {},
-	})
+	}
+	const { [syl_body]: body, [syl_proto]: descs } = proto
 	let index = 0
 	const bd = self[syl_body]
 	for (const k in bd) {
@@ -686,7 +727,7 @@ export function typeinit(tdesc: TypeDesc, literal?: any): any {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
-	return TypeDesc_init(tdesc, null!, false, literal, tdesc)
+	return TypeDesc_init(tdesc, tdesc, literal, null!, false)
 }
 
 /**
@@ -750,9 +791,12 @@ interface VirtualValue {
 
 function VirtualValue_set(self: VirtualValue, val: any, struct: Struct) {
 	const { type: tdesc, value: oldVal, observers } = self
+	if (isWrapValue(val)) {
+		val = (<WrapValue>val)[syl_value]
+	}
 	let diff = oldVal !== val
 	if (diff || tdesc[syl_adjust]) {
-		self.value = val = TypeDesc_check(tdesc, val, Flag.adjust, tdesc)
+		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust)
 		diff = oldVal !== val
 	}
 	const notnil = isNotnil(val)
@@ -797,7 +841,7 @@ function VirtualValue_set(self: VirtualValue, val: any, struct: Struct) {
 		if (!n.diff || diff) {
 			if (!n.notnil || notnil) {
 				if (n.children && notnil) {
-					if (!ObserveNode_check(n)) {
+					if (!ObserveNode_check(n, notnil)) {
 						continue
 					}
 				}
@@ -832,26 +876,21 @@ function ObserveNode_dispatch(self: ObserveNode) {
 	self.running = false
 }
 
-function ObserveNode_check(self: ObserveNode) {
-	if (!self.notnil) {
-		return true
-	}
-	const { children, virtual } = self
-	const val = virtual.value
-	if (children) {
-		if (val) {
-			let bitmap = 0
-			const { test, or } = self
-			for (const n of children) {
-				if (ObserveNode_check(n)) {
-					bitmap |= 1 << n.bit
-					if (bitmap === test || or) {
-						return true
-					}
-				}
+function ObserveNode_check(self: ObserveNode, notnil: boolean) {
+	const { children } = self
+	if (children && notnil) {
+		let bitmap = 0
+		const { test, or } = self
+		for (const n of children) {
+			if (!ObserveNode_check(n, isNotnil(n.virtual.value))) {
+				return false
+			}
+			bitmap |= 1 << n.bit
+			if (bitmap === test || or) {
+				return true
 			}
 		}
-	} else if (isNotnil(val)) {
+	} else if (!self.notnil || notnil) {
 		return true
 	}
 	return false
@@ -1049,7 +1088,7 @@ export function funcdef(
 	}
 	if (!name) {
 		throw Error('name is not defined')
-	} else if (!isString(name) && !isObject(name)) {
+	} else if ((!isString(name) && !isObject(name)) || isWrapValue(name)) {
 		throw Error('name is invalid')
 	}
 	if (!obj[syl_observers]) {

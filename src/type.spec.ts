@@ -6,6 +6,7 @@
  */
 
 import {
+	wrapval,
 	funcdef,
 	typedef,
 	typeinit,
@@ -19,7 +20,7 @@ import {
 	any,
 } from './type'
 
-const at_mock = { '@mock': true }
+const at_mock = wrapval({ '@mock': true })
 
 describe('type', () => {
 	test('define a struct', () => {
@@ -1195,7 +1196,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			input: string,
 		})
-		;['', false, true, 0, 1, null, void 0].forEach((v) => {
+		;['', false, true, 0, 1, null, void 0, wrapval({})].forEach((v) => {
 			expect(() => {
 				funcdef(
 					tdesc,
@@ -1733,14 +1734,19 @@ describe('type', () => {
 			name: string,
 			sex: bool,
 		})
-		const a = typeinit(tdesc, {
-			'@mock': true,
-			sex: true,
-		})
+		const a = typeinit(
+			tdesc,
+			wrapval(
+				{ '@mock': true },
+				{
+					sex: true,
+				}
+			)
+		)
 		expect(a.name).not.toBe('')
 		expect(a.sex).toBe(true)
 		const b = typeinit(tdesc, {
-			name: { '@mock': true },
+			name: wrapval({ '@mock': true }),
 			sex: true,
 		})
 		expect(b.name).not.toBe('')
@@ -1939,5 +1945,53 @@ describe('type', () => {
 		expect(c.out).toBe(true)
 
 		typeinit(C).b.a = a
+	})
+
+	describe('wrapval', () => {
+		test('the description is invalid', () => {
+			;[null, 1, true, 'test'].forEach((v) => {
+				expect(() => {
+					wrapval(v)
+				}).toThrow()
+			})
+		})
+
+		test('cannot wrap the already wrapped value', () => {
+			const ret = wrapval({})
+			expect(() => {
+				wrapval({}, ret)
+			}).toThrow()
+		})
+
+		test('initialize use wrapval', () => {
+			const tdesc = typedef({
+				name: string,
+			})
+			expect(typeinit(tdesc, wrapval({})).name).toBe('')
+			expect(
+				typeinit(
+					tdesc,
+					wrapval(
+						{},
+						{
+							name: 'test',
+						}
+					)
+				).name
+			).toBe('test')
+
+			expect(typeinit(int32, wrapval({}))).toBe(0)
+			expect(typeinit(int32, wrapval({}, 1))).toBe(1)
+		})
+
+		test('assign wrapval to structure field', () => {
+			const tdesc = typedef({
+				name: string,
+			})
+			const ret = typeinit(tdesc)
+			expect(ret.name).toBe('')
+			ret.name = wrapval({}, 'test')
+			expect(ret.name).toBe('test')
+		})
 	})
 })
