@@ -671,7 +671,7 @@ any[syl_kind] = Kind.any
  * @returns 返回定义的 TypeDesc
  *
  * @example
- * ```
+ * ```ts
  * const Person = typedef({
  *   name: string,
  *   sex: bool,
@@ -679,7 +679,7 @@ any[syl_kind] = Kind.any
  * ```
  *
  * @example
- * ```
+ * ```ts
  * // 先声明空的 Struct
  * const Person = typedef({})
  * typedef({
@@ -703,7 +703,7 @@ export function typedef(desc: any, tdesc?: TypeDesc): TypeDesc {
  * @returns 返回生成的值
  *
  * @example
- * ```
+ * ```ts
  * const Person = typedef({
  *   name: string,
  *   sex: bool,
@@ -1050,26 +1050,33 @@ function ObserveFieldNodeDesc_init(tdesc: TypeDesc, body: any, name: string) {
  * @param func    - 当待观察的字段符合描述的规则时触发该函数
  *
  * @example
- * ```
- * const Account = typedef({
- *   username: string,
- *   password: string,
- *   logined: bool,
+ * ```ts
+ * const Person = typedef({
+ *   name: string,
+ *   sex: bool,
+ *   intro: string,
  * })
  *
- * // 当用户名和密码都变更时，触发登录函数
- * funcdef(Account, 'login', {
- *   username: true,
- *   password: true,
- * }, (account: Struct) => {
- *   account.logined = true
- * })
+ * // 期望当名字、性别发生变化时，自动生成个人介绍
+ * funcdef(
+ *   Person,
+ *   'generateIntroduction',
+ *   {
+ *     name: true,
+ *     sex: true,
+ *   },
+ *   (self: Struct) => {
+ *     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
+ *   }
+ * )
  *
- * const account = typeinit(Account)
- * account.username = 'Ron'
- * account.password = '***'
- * // 条件已经符合，自动执行登录
- * // result: account.logined === true
+ * const myself = typeinit(Person)
+ * myself.name = 'Amy'
+ * myself.sex = true
+ * // 此时，预期的名字、性别发生变化了，
+ * // 将会自动执行函数，生成个人介绍。
+ * console.log(myself.intro)
+ * // output: My name is Amy, I am a girl.
  * ```
  *
  * @public
@@ -1129,23 +1136,29 @@ export function funcdef(
  * @returns 返回函数结果的 Promise
  *
  * @example
- * ```
- * // 当用户名和密码都变更时，自动执行登录
- * funcdef(Account, 'login', {
- *   username: true,
- *   password: true,
- * }, (account: Struct) => {
- *   return `Hello ${account.username}!`
- * })
+ * ```ts
+ * // 期望当名字、性别发生变化时，自动生成个人介绍
+ * funcdef(
+ *   Person,
+ *   'generateIntroduction',
+ *   {
+ *     name: true,
+ *     sex: true,
+ *   },
+ *   (self: Struct) => {
+ *     return self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
+ *   }
+ * )
  *
- * const account = typeinit(Account)
+ * const myself = typeinit(Person)
  * // 先预期需要获取的结果
- * const asyncResult = outcome(account, 'login')
- * account.username = 'Ron'
- * account.password = '***'
- * // 条件已经符合，自动执行登录
- * await asyncResult
- * // result: Hello Ron!
+ * const asyncResult = outcome(myself, 'generateIntroduction')
+ * myself.name = 'Amy'
+ * myself.sex = true
+ * // 此时，预期的名字、性别发生变化了，
+ * // 将会自动执行函数，生成个人介绍。
+ * console.log(await asyncResult)
+ * // output: My name is Amy, I am a girl.
  * ```
  *
  * @public
