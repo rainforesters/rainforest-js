@@ -1,0 +1,11 @@
+.DS_Store
+.idea
+.vscode
+
+*.log*
+
+coverage
+dist
+node_modules
+temp
+.vuepress/dist
