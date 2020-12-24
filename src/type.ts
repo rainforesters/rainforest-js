@@ -379,8 +379,8 @@ function TypeDesc_init(
 		if (isWrapValue(literal)) {
 			const desc = literal[syl_desc]
 			literal = literal[syl_value]
-			if (at_mock in desc) {
-				mock = desc[at_mock]
+			if (at_mock in desc && desc[at_mock]) {
+				mock = true
 			} else if (void 0 !== literal) {
 				isLiteral = true
 			}
@@ -391,13 +391,14 @@ function TypeDesc_init(
 	let ret: any
 	switch (self[syl_kind]) {
 		case Kind.struct: {
-			if (null === literal) {
-				return literal
-			}
-			if (isStruct(literal)) {
-				ret = literal
-				isLiteral = true
-				break
+			if (isLiteral) {
+				if (null === literal) {
+					return literal
+				}
+				if (isStruct(literal)) {
+					ret = literal
+					break
+				}
 			}
 			if (void 0 !== literal) {
 				if (!isObject(literal)) {
