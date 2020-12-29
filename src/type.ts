@@ -59,6 +59,7 @@ for (let i = 0; i < 64; i++) {
 function propDef(index: number) {
 	return (
 		propCache[index] || {
+			configurable: true,
 			enumerable: true,
 			get: function () {
 				return this[syl_virtual][index].value
