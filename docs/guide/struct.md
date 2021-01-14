@@ -677,7 +677,7 @@ funcdef(
     },
   },
   (self: Struct) => {
-    console.log(self.name, self.sex ? 'female' : 'male')
+    console.log(self.ref.name, self.ref.sex ? 'female' : 'male')
   }
 )
 // 初始化，将原实例附加到这个新的临时结构上
