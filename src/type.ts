@@ -106,7 +106,7 @@ function isNotnil(v: any): boolean {
 
 interface WrapValue {
 	[syl_wrap]: true
-	[syl_desc]: any
+	[syl_desc]: Record<string, any>
 	[syl_value]: any
 }
 
@@ -123,7 +123,7 @@ function isWrapValue(v: any): v is WrapValue {
  *
  * @public
  */
-export function wrapval(desc: any, val?: any): any {
+export function wrapval(desc: Record<string, any>, val?: any): Readonly<any> {
 	if (!isObject(desc)) {
 		throw TypeError('description is invalid')
 	}
@@ -520,7 +520,7 @@ function TypeDesc_proto(self: TypeDesc): ProtoDesc {
 	}
 	const { [syl_body]: body, [syl_proto]: descs } = proto
 	let index = 0
-	const bd = self[syl_body]
+	const bd = Object.freeze(self[syl_body])
 	for (const k in bd) {
 		body[k] = {
 			index,
@@ -535,7 +535,7 @@ function TypeDesc_proto(self: TypeDesc): ProtoDesc {
 }
 
 // 遍历定义结构字段
-function TypeDesc_body(self: TypeDesc, body: any) {
+function TypeDesc_body(self: TypeDesc, body: Record<string, any>) {
 	let b = false
 	const bd = (self[syl_body] = self[syl_body] || {})
 	for (const k of Object.keys(body)) {
@@ -554,7 +554,7 @@ function TypeDesc_body(self: TypeDesc, body: any) {
 	return b
 }
 
-function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
+function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc) {
 	if (!isObject(desc)) {
 		throw Error('desc is invalid')
 	}
@@ -608,11 +608,14 @@ function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
 			case Kind.struct:
 				tdesc[syl_noinit] = tt[syl_noinit] || !!desc[at_noinit]
 				tdesc[syl_accept] = new Set<TypeDesc>(tdesc[syl_type]).add(tdesc)
+				tdesc[syl_observers] = null!
 				break
 		}
 	} else {
 		tdesc[syl_noinit] = !!desc[at_noinit]
 		tdesc[syl_accept] = new Set<TypeDesc>().add(tdesc)
+		tdesc[syl_observers] = null!
+		tdesc[syl_proto] = null!
 		const c = desc[at_class]
 		if (c) {
 			if (!isFunc(c)) {
@@ -626,7 +629,7 @@ function TypeDesc_define(desc: any, tdesc?: TypeDesc) {
 			TypeDesc_proto(tdesc)
 		}
 	}
-	return tdesc
+	return Object.seal(tdesc)
 }
 
 function defineClass(name: string, type: Function): FunctionConstructor {
@@ -635,11 +638,11 @@ function defineClass(name: string, type: Function): FunctionConstructor {
 	return c
 }
 
-function primitiveDesc(name: string) {
+function primitiveDesc(name: string, kind: Kind = Kind.primitive) {
 	const tdesc: TypeDesc = <any>new (defineClass(name, TypeDesc))()
-	tdesc[syl_kind] = Kind.primitive
+	tdesc[syl_kind] = kind
 	tdesc[syl_name] = name
-	return tdesc
+	return Object.freeze(tdesc)
 }
 
 // primitive types
@@ -662,8 +665,7 @@ export const string = primitiveDesc('string')
 /**
  * @public
  */
-export const any = primitiveDesc('any')
-any[syl_kind] = Kind.any
+export const any = primitiveDesc('any', Kind.any)
 
 /**
  * 定义一个新的类型描述
@@ -693,7 +695,10 @@ any[syl_kind] = Kind.any
  *
  * @public
  */
-export function typedef(desc: any, tdesc?: TypeDesc): TypeDesc {
+export function typedef(
+	desc: Record<string, any>,
+	tdesc?: TypeDesc
+): Readonly<TypeDesc> {
 	return TypeDesc_define(desc, tdesc)
 }
 
@@ -740,7 +745,9 @@ export function typeinit(tdesc: TypeDesc, literal?: any): any {
  *
  * @public
  */
-export function structbody(tdesc: TypeDesc): Record<string, TypeDesc> {
+export function structbody(
+	tdesc: TypeDesc
+): Readonly<Record<string, TypeDesc>> {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
@@ -762,7 +769,7 @@ export function structbody(tdesc: TypeDesc): Record<string, TypeDesc> {
  *
  * @public
  */
-export function structof(struct: Struct): TypeDesc {
+export function structof(struct: Struct): Readonly<TypeDesc> {
 	if (!isStruct(struct)) {
 		throw TypeError('type is not struct')
 	}
@@ -837,7 +844,7 @@ function VirtualValue_set(self: VirtualValue, val: any, struct: Struct) {
 			// 表示该类型可能会手动触发观察者
 			if (isObject(oldVal)) {
 				// 移除旧值的变更元素
-				changeMap.get(oldVal)?.delete(self)
+				changeMap.get(oldVal)!.delete(self)
 			}
 			if (isObject(val)) {
 				// 为新值注册变更元素
@@ -957,7 +964,7 @@ function ObserveNode_remove(self: ObserveNode) {
 			const val = virtual.value
 			if (isObject(val)) {
 				// 移除旧值的变更元素
-				changeMap.get(val)?.delete(virtual)
+				changeMap.get(val)!.delete(virtual)
 			}
 		}
 	}
@@ -988,7 +995,7 @@ function ObserveNode_init(fn: ObserveFieldNodeDesc) {
 
 function ObserveFieldNodeDesc_fields(
 	tdesc: TypeDesc,
-	body: any,
+	body: Record<string, any>,
 	parent: ObserveFieldNodeDesc,
 	offset: number
 ) {
@@ -1013,7 +1020,11 @@ function ObserveFieldNodeDesc_fields(
 	}
 }
 
-function ObserveFieldNodeDesc_init(tdesc: TypeDesc, body: any, name: string) {
+function ObserveFieldNodeDesc_init(
+	tdesc: TypeDesc,
+	body: Record<string, any>,
+	name: string
+) {
 	const node: ObserveFieldNodeDesc = {
 		name,
 		test: 0,
@@ -1086,7 +1097,7 @@ function ObserveFieldNodeDesc_init(tdesc: TypeDesc, body: any, name: string) {
 export function funcdef(
 	tdesc: TypeDesc,
 	name: any,
-	observe: any,
+	observe: Record<string, any>,
 	func: Function
 ): void {
 	if (!isTypeDesc(tdesc)) {

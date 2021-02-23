@@ -78,7 +78,7 @@ describe('type', () => {
 			{ '1': string },
 		].forEach((v) => {
 			expect(() => {
-				typedef(v)
+				typedef(<any>v)
 			}).toThrow()
 		})
 	})
@@ -296,6 +296,7 @@ describe('type', () => {
 
 	test('initialize struct', () => {
 		const tdesc = typedef({
+			'@verify': (self: any) => self,
 			name: string,
 			sex: bool,
 			age: int32,
@@ -306,6 +307,7 @@ describe('type', () => {
 		expect(ret.sex).toBe(false)
 		expect(ret.age).toBe(0)
 		expect(ret.trend).toBe(0)
+		expect(Object.keys(ret).length).toBe(Object.keys(structbody(tdesc)).length)
 	})
 
 	test('mock struct', () => {
@@ -1057,7 +1059,7 @@ describe('type', () => {
 			input: string,
 		})
 		expect(() => {
-			funcdef(tdesc, 'func', null, (self: any) => self)
+			funcdef(tdesc, 'func', <any>null, (self: any) => self)
 		}).toThrow()
 		expect(() => {
 			funcdef(
@@ -1071,10 +1073,10 @@ describe('type', () => {
 		}).toThrow()
 
 		expect(() => {
-			funcdef(<any>1, '', null, null!)
+			funcdef(<any>1, '', <any>null, null!)
 		}).toThrow()
 		expect(() => {
-			funcdef(any, '', null, null!)
+			funcdef(any, '', <any>null, null!)
 		}).toThrow()
 	})
 
@@ -1649,6 +1651,9 @@ describe('type', () => {
 		expect(() => {
 			outcome(ret, 'func')
 		}).toThrow()
+		expect(() => {
+			outcome(ret)
+		}).toThrow()
 	})
 
 	test('get the result with wrong type', () => {
@@ -1917,7 +1922,7 @@ describe('type', () => {
 		test('the description is invalid', () => {
 			;[null, 1, true, 'test'].forEach((v) => {
 				expect(() => {
-					wrapval(v)
+					wrapval(<any>v)
 				}).toThrow()
 			})
 		})

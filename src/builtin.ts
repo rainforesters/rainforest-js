@@ -10,7 +10,7 @@ import { typedef, any, TypeDesc } from './type'
 /**
  * @public
  */
-export const object: TypeDesc = typedef({
+export const object: Readonly<TypeDesc> = typedef({
 	'@name': 'object',
 	'@type': any,
 	'@value': () => {
@@ -26,7 +26,7 @@ export const object: TypeDesc = typedef({
 /**
  * @public
  */
-export const array: TypeDesc = typedef({
+export const array: Readonly<TypeDesc> = typedef({
 	'@name': 'array',
 	'@type': any,
 	'@value': () => [],

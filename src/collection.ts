@@ -58,7 +58,7 @@ const CArrayHandler = {
  *
  * @public
  */
-export const CArray: TypeDesc = typedef({
+export const CArray: Readonly<TypeDesc> = typedef({
 	'@name': 'CArray',
 	'@type': array,
 	'@change': true,
