@@ -816,6 +816,12 @@ describe('type', () => {
 			ret.c = null
 		}).toThrow()
 		expect(ret.c).not.toBeNull()
+
+		expect(() => {
+			typeinit(tdesc, {
+				a: null,
+			})
+		}).toThrow()
 	})
 
 	test('noinit', () => {
@@ -840,6 +846,29 @@ describe('type', () => {
 		ret.b = null
 		expect(ret.b).toBeNull()
 		expect(typeinit(A)).toBeDefined()
+	})
+
+	test('noinit & notnil', () => {
+		const A = typedef({
+			'@noinit': true,
+			'@notnil': true,
+			name: string,
+		})
+		const B = typedef({
+			name: string,
+		})
+		const tdesc = typedef({
+			a: A,
+			b: B,
+		})
+		const ret = typeinit(tdesc, {
+			a: typeinit(A),
+		})
+		expect(ret.a.name).toBe('')
+
+		expect(() => {
+			typeinit(tdesc)
+		}).toThrow()
 	})
 
 	test('define a function', () => {

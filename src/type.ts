@@ -394,6 +394,9 @@ function TypeDesc_init(
 		case Kind.struct: {
 			if (isLiteral) {
 				if (null === literal) {
+					if (self[syl_notnil]) {
+						throw Error('must not be nil')
+					}
 					return literal
 				}
 				if (isStruct(literal)) {
@@ -445,10 +448,14 @@ function TypeDesc_init(
 			for (const k in bd) {
 				const t = bd[k]
 				const l = literal && literal[k]
-				const v =
-					t[syl_noinit] && void 0 === l
-						? l
-						: TypeDesc_init(t, t, l, circular, mock)
+				let v = l
+				if (t[syl_noinit] && void 0 === l) {
+					if (t[syl_notnil]) {
+						throw Error('must not be nil')
+					}
+				} else {
+					v = TypeDesc_init(t, t, l, circular, mock)
+				}
 				virtual.push({
 					name: k,
 					value: v,
