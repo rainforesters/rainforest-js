@@ -5,64 +5,93 @@
 ```ts
 
 // @public (undocumented)
-export const any: Readonly<TypeDesc>;
+export const array: TypeDesc<unknown[]>;
 
 // @public (undocumented)
-export const array: Readonly<TypeDesc>;
+export type bool = boolean | never;
 
 // @public (undocumented)
-export const bool: Readonly<TypeDesc>;
+export const bool: TypeDesc<boolean>;
 
 // @public
-export const CArray: Readonly<TypeDesc>;
+export const CArray: TypeDesc<unknown[]>;
 
 // @public
-export function change(obj: any): void;
+export function change(obj: Record<any, any>): void;
 
 // @public (undocumented)
-export const float64: Readonly<TypeDesc>;
+export type float64 = number | (1 & never[]);
 
+// @public (undocumented)
+export const float64: TypeDesc<float64>;
+
+// Warning: (ae-forgotten-export) The symbol "observe" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function funcdef(tdesc: TypeDesc, name: any, observe: Record<string, any>, func: Function): void;
+export function funcdef<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void;
 
 // @public (undocumented)
-export const int32: Readonly<TypeDesc>;
+export type int32 = number | (0 & never[]);
 
 // @public (undocumented)
-export const object: Readonly<TypeDesc>;
+export const int32: TypeDesc<int32>;
 
+// @public (undocumented)
+export const object: TypeDesc<Record<string, unknown>>;
+
+// Warning: (ae-forgotten-export) The symbol "StructType" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function outcome(struct: Struct, name?: any): Promise<unknown>;
+export function outcome(struct: Struct<StructType>, name?: unknown): Promise<unknown>;
 
 // @public (undocumented)
-export const string: Readonly<TypeDesc>;
+export const string: TypeDesc<string>;
 
 // Warning: (ae-forgotten-export) The symbol "_Struct" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export interface Struct extends _Struct {
-}
+export type Struct<T extends StructType> = T & _Struct;
+
+// Warning: (ae-forgotten-export) The symbol "structbody" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): structbody_2<T>;
 
 // @public
-export function structbody(tdesc: TypeDesc): Readonly<Record<string, TypeDesc>>;
+export function structof<T extends Struct<StructType>>(struct: T): structof<T>;
 
-// @public
-export function structof(struct: Struct): Readonly<TypeDesc>;
+// @public (undocumented)
+export type structof<T extends Struct<StructType>> = T extends Struct<infer U> ? TypeDesc<Struct<{
+    [K in keyof U]: U[K] extends Struct<StructType> ? structof<U[K]> : TypeDesc<U[K]>;
+}>> : never;
 
+// Warning: (ae-forgotten-export) The symbol "Desc" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "typedef" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function typedef(desc: Record<string, any>, tdesc?: TypeDesc): Readonly<TypeDesc>;
+export function typedef<T extends Desc<T>>(desc: T, tdesc?: typedef_2<T>): typedef_2<T>;
 
 // Warning: (ae-forgotten-export) The symbol "_TypeDesc" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export interface TypeDesc extends _TypeDesc {
+export interface TypeDesc<T> extends _TypeDesc<T> {
 }
 
 // @public
-export function typeinit(tdesc: TypeDesc, literal?: any): any;
+export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: unknown): typeinit<T>;
+
+// Warning: (ae-forgotten-export) The symbol "keysof" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> ? U extends Struct<infer V> ? V extends Record<string, TypeDesc<unknown>> ? Struct<{
+    [K in keysof<U>]: U[K] extends infer O ? O extends TypeDesc<unknown> ? typeinit<O> : never : never;
+}> : never : U : never;
+
+// @public (undocumented)
+export const unknown: TypeDesc<unknown>;
 
 // @public
-export function wrapval(desc: Record<string, any>, val?: any): Readonly<any>;
+export function wrapval<T>(desc: Record<string, unknown>, val?: T): Readonly<T>;
 
 
 // (No @packageDocumentation comment for this package)

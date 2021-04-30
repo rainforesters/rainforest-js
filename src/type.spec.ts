@@ -18,7 +18,9 @@ import {
 	int32,
 	float64,
 	string,
-	any,
+	unknown,
+	Struct,
+	TypeDesc,
 } from './type'
 
 const at_mock = wrapval({ '@mock': true })
@@ -46,7 +48,12 @@ describe('type', () => {
 	})
 
 	test('declare an empty struct before, then complete its fields', () => {
-		const tdesc = typedef({})
+		type tdesc = TypeDesc<
+			Struct<{
+				next: tdesc
+			}>
+		>
+		const tdesc: tdesc = typedef({})
 		typedef(
 			{
 				next: tdesc,
@@ -76,24 +83,26 @@ describe('type', () => {
 			{ name: String },
 			{ '-name': string },
 			{ '1': string },
-		].forEach((v) => {
+		].forEach((v: any) => {
 			expect(() => {
-				typedef(<any>v)
+				typedef(v)
 			}).toThrow()
 		})
 	})
 
 	test('define new type with a wrong type', () => {
-		;[bool, int32, float64, string, any, true, 1, 'test', {}].forEach((v) => {
-			expect(() => {
-				typedef(
-					{},
-					typedef({
-						'@type': v,
-					})
-				)
-			}).toThrow()
-		})
+		;[bool, int32, float64, string, unknown, true, 1, 'test', {}].forEach(
+			(v: any) => {
+				expect(() => {
+					typedef(
+						{},
+						typedef({
+							'@type': v,
+						})
+					)
+				}).toThrow()
+			}
+		)
 		expect(() => {
 			typedef({}, <any>{})
 		}).toThrow()
@@ -107,7 +116,7 @@ describe('type', () => {
 			{
 				'@name': '_name',
 			},
-		].forEach((v) => {
+		].forEach((v: any) => {
 			expect(() => {
 				typedef(v)
 			}).toThrow()
@@ -139,7 +148,7 @@ describe('type', () => {
 			'@release',
 		].forEach((k) => {
 			expect(() => {
-				typedef({
+				typedef(<any>{
 					[k]: {},
 				})
 			}).toThrow()
@@ -153,7 +162,7 @@ describe('type', () => {
 			'test',
 			{},
 			typedef({
-				'@type': any,
+				'@type': unknown,
 			}),
 		].forEach((v: any) => {
 			expect(() => {
@@ -202,9 +211,9 @@ describe('type', () => {
 		expect(typeinit(tdesc)).toBe('')
 	})
 
-	test('decorate any', () => {
+	test('decorate unknown', () => {
 		const tdesc = typedef({
-			'@type': any,
+			'@type': unknown,
 		})
 		expect(tdesc).toBeInstanceOf(Object)
 		expect(typeinit(tdesc)).toBeUndefined()
@@ -226,14 +235,23 @@ describe('type', () => {
 	test('get the type of structure instance', () => {
 		const A = typedef({
 			name: string,
+			sub: typedef({
+				arg: int32,
+			}),
 		})
 		const B = typedef({
 			'@type': A,
 		})
 		const a = typeinit(A)
-		expect(structof(a)).toBe(A)
+		expect(structof(a) === A).toBe(true)
+		expect(typeinit(structof(a)) !== a).toBe(true)
 		const b = typeinit(B)
-		expect(structof(b)).toBe(B)
+		expect(structof(b) === B).toBe(true)
+		expect(typeinit(structof(b)) !== b).toBe(true)
+		expect(a !== b).toBe(true)
+		expect(a.sub !== b.sub).toBe(true)
+		a.sub = b.sub
+		expect(a.sub === b.sub).toBe(true)
 		;[true, 1, 'test', {}, A].forEach((v: any) => {
 			expect(() => {
 				structof(v)
@@ -429,7 +447,13 @@ describe('type', () => {
 	})
 
 	test('initialize struct, but will form a circular reference', () => {
-		const tdesc = typedef({})
+		type tdesc = TypeDesc<
+			Struct<{
+				name: TypeDesc<string>
+				next: tdesc
+			}>
+		>
+		const tdesc: tdesc = typedef({})
 		typedef(
 			{
 				name: string,
@@ -441,7 +465,13 @@ describe('type', () => {
 		expect(ret.name).toBe('')
 		expect(ret.next).toBeUndefined()
 
-		const A = typedef({
+		type A = TypeDesc<
+			Struct<{
+				b: TypeDesc<Struct<Record<string, never>>>
+				next: A
+			}>
+		>
+		const A: A = typedef({
 			'@notnil': true,
 		})
 		const B = typedef({})
@@ -481,7 +511,7 @@ describe('type', () => {
 		expect(() => {
 			ret.b = typeinit(A)
 		}).toThrow()
-		;[typeinit(A), typeinit(B), true, 1, 'test', {}].forEach((v) => {
+		;[typeinit(A), typeinit(B), true, 1, 'test', {}].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()
@@ -496,7 +526,7 @@ describe('type', () => {
 		expect(ret.value).toBe(false)
 		ret.value = true
 		expect(ret.value).toBe(true)
-		;[1, 'test', {}].forEach((v) => {
+		;[1, 'test', {}].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()
@@ -511,7 +541,7 @@ describe('type', () => {
 		expect(ret.value).toBe(0)
 		ret.value = 123
 		expect(ret.value).toBe(123)
-		;[true, 0.123, 'test', {}].forEach((v) => {
+		;[true, 0.123, 'test', {}].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()
@@ -526,7 +556,7 @@ describe('type', () => {
 		expect(ret.value).toBe(0)
 		ret.value = 0.123
 		expect(ret.value).toBe(0.123)
-		;[true, 'test', {}].forEach((v) => {
+		;[true, 'test', {}].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()
@@ -541,7 +571,7 @@ describe('type', () => {
 		expect(ret.value).toBe('')
 		ret.value = 'test'
 		expect(ret.value).toBe('test')
-		;[true, 1, {}].forEach((v) => {
+		;[true, 1, {}].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()
@@ -772,9 +802,9 @@ describe('type', () => {
 		expect(b.value.count).toBe(1)
 		b.value = ref
 		expect(ref.count).toBe(2)
-		b.value = null
+		b.value = null!
 		expect(ref.count).toBe(1)
-		a.value = null
+		a.value = null!
 		expect(ref.count).toBe(0)
 	})
 
@@ -800,7 +830,7 @@ describe('type', () => {
 		a.name = 'a'
 		expect(a.name).toBe('a')
 		expect(() => {
-			ret.a = null
+			ret.a = null!
 		}).toThrow()
 		expect(ret.a).not.toBeNull()
 		ret.a = typeinit(A)
@@ -809,11 +839,11 @@ describe('type', () => {
 		expect(ret.a.name).toBe('test')
 		expect(a.name).toBe('a')
 		expect(ret.b).not.toBeNull()
-		ret.b = null
+		ret.b = null!
 		expect(ret.b).toBeNull()
 		expect(ret.c).not.toBeNull()
 		expect(() => {
-			ret.c = null
+			ret.c = null!
 		}).toThrow()
 		expect(ret.c).not.toBeNull()
 
@@ -840,10 +870,10 @@ describe('type', () => {
 		expect(ret.a).toBeUndefined()
 		ret.a = typeinit(A)
 		expect(ret.a).not.toBeNull()
-		ret.a = null
+		ret.a = null!
 		expect(ret.a).toBeNull()
 		expect(ret.b).not.toBeNull()
-		ret.b = null
+		ret.b = null!
 		expect(ret.b).toBeNull()
 		expect(typeinit(A)).toBeDefined()
 	})
@@ -886,7 +916,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -919,7 +949,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof A>) => self
 		)
 
 		const tdesc = typedef({
@@ -933,7 +963,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -945,7 +975,7 @@ describe('type', () => {
 				param2: true,
 				param3: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.result = `${self.param1}-${self.param2}-${self.param3}`
 			}
 		)
@@ -987,7 +1017,7 @@ describe('type', () => {
 					param2: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.arg1}-${self.arg2} {${self.sub.param1}-${self.sub.param2}}`
 			}
 		)
@@ -1016,7 +1046,7 @@ describe('type', () => {
 				arg1: { '@diff': true },
 				arg2: { '@diff': true },
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.arg1}-${self.arg2}`
 			}
 		)
@@ -1053,7 +1083,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -1079,7 +1109,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof tdesc>) => self
 		)
 	})
 
@@ -1088,7 +1118,7 @@ describe('type', () => {
 			input: string,
 		})
 		expect(() => {
-			funcdef(tdesc, 'func', <any>null, (self: any) => self)
+			funcdef(tdesc, 'func', null!, (self: typeinit<typeof tdesc>) => self)
 		}).toThrow()
 		expect(() => {
 			funcdef(
@@ -1102,10 +1132,10 @@ describe('type', () => {
 		}).toThrow()
 
 		expect(() => {
-			funcdef(<any>1, '', <any>null, null!)
+			funcdef(<any>1, '', null!, null!)
 		}).toThrow()
 		expect(() => {
-			funcdef(any, '', <any>null, null!)
+			funcdef(unknown, '', null!, null!)
 		}).toThrow()
 	})
 
@@ -1119,7 +1149,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof tdesc>) => self
 		)
 		expect(() => {
 			funcdef(
@@ -1128,7 +1158,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: any) => self
+				(self: typeinit<typeof tdesc>) => self
 			)
 		}).toThrow()
 	})
@@ -1143,7 +1173,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof A>) => self
 		)
 		expect(() => {
 			funcdef(
@@ -1152,7 +1182,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: any) => self
+				(self: typeinit<typeof A>) => self
 			)
 		}).toThrow()
 
@@ -1165,7 +1195,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof B>) => self
 		)
 		expect(() => {
 			funcdef(
@@ -1174,7 +1204,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: any) => self
+				(self: typeinit<typeof B>) => self
 			)
 		}).toThrow()
 		expect(() => {
@@ -1184,7 +1214,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: any) => self
+				(self: typeinit<typeof B>) => self
 			)
 		}).toThrow()
 	})
@@ -1201,7 +1231,7 @@ describe('type', () => {
 					{
 						input: true,
 					},
-					(self: any) => self
+					(self: typeinit<typeof tdesc>) => self
 				)
 			}).toThrow()
 		})
@@ -1212,7 +1242,7 @@ describe('type', () => {
 				'@name': 'func',
 				input: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof tdesc>) => self
 		)
 	})
 
@@ -1222,7 +1252,7 @@ describe('type', () => {
 			out: string,
 		})
 		expect(() => {
-			funcdef(tdesc, 'func', {}, (self: any) => {
+			funcdef(tdesc, 'func', {}, (self: typeinit<typeof tdesc>) => {
 				self.out = self.input
 			})
 		}).toThrow()
@@ -1240,7 +1270,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = self.input * 2
 			}
 		)
@@ -1250,7 +1280,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.result = self.input * 4
 			}
 		)
@@ -1284,7 +1314,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof A>) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1303,7 +1333,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof B>) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1350,7 +1380,7 @@ describe('type', () => {
 			{
 				sub: true,
 			},
-			(self: any) => self
+			(self: typeinit<typeof tdesc>) => self
 		)
 		funcdef(
 			tdesc,
@@ -1362,7 +1392,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				if (!self.sub) {
 					self.out = `${self.name} {}`
 					return
@@ -1378,14 +1408,14 @@ describe('type', () => {
 					arg1: true,
 				},
 			},
-			(self: any) => self
+			(self: typeinit<typeof tdesc>) => self
 		)
 		const sub = typeinit(Sub)
 		const ret = typeinit(tdesc)
 		ret.sub = sub
 		ret.name = 'a'
 		expect(ret.out).toBe('a {0-0}')
-		ret.sub = null
+		ret.sub = null!
 		ret.name = 'A'
 		expect(ret.out).toBe('A {}')
 		sub.arg1 = 1
@@ -1415,7 +1445,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1424,7 +1454,7 @@ describe('type', () => {
 		ret.sub = sub
 		ret.name = 'a'
 		expect(ret.out).toBe('a {0-0}')
-		ret.sub = null
+		ret.sub = null!
 		ret.name = 'A'
 		expect(ret.out).toBe('a {0-0}')
 		sub.arg1 = 1
@@ -1435,7 +1465,7 @@ describe('type', () => {
 	test('the observer does not observe that the value is nil', () => {
 		const tdesc = typedef({
 			name: string,
-			input: any,
+			input: unknown,
 			out: string,
 		})
 		funcdef(
@@ -1445,7 +1475,7 @@ describe('type', () => {
 				name: true,
 				input: { '@notnil': true },
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = `${self.name} ${self.input}`
 			}
 		)
@@ -1471,10 +1501,10 @@ describe('type', () => {
 			funcdef(
 				tdesc,
 				'func',
-				{
+				<any>{
 					test: true,
 				},
-				(self: any) => self
+				(self: typeinit<typeof tdesc>) => self
 			)
 		}).toThrow()
 	})
@@ -1490,7 +1520,7 @@ describe('type', () => {
 				{
 					input: {},
 				},
-				(self: any) => self
+				(self: typeinit<typeof tdesc>) => self
 			)
 		}).toThrow()
 	})
@@ -1513,7 +1543,7 @@ describe('type', () => {
 				{
 					...observe,
 				},
-				(self: any) => self
+				(self: typeinit<typeof tdesc>) => self
 			)
 		}).toThrow()
 	})
@@ -1522,7 +1552,7 @@ describe('type', () => {
 		const A = typedef({
 			sub: typedef({
 				input: string,
-				arg: any,
+				arg: unknown,
 			}),
 		})
 		const tdesc = typedef({
@@ -1542,7 +1572,7 @@ describe('type', () => {
 					},
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.output = self.a.sub.input
 			}
 		)
@@ -1550,14 +1580,14 @@ describe('type', () => {
 		const sub = a.sub
 		sub.input = 'test'
 		sub.arg = 1
-		a.sub = null
+		a.sub = null!
 		const ret = typeinit(tdesc)
 		ret.a = a
 		expect(ret.output).toBe('')
 		a.sub = sub
 		expect(ret.output).toBe('test')
 		ret.output = ''
-		ret.a = null
+		ret.a = null!
 		expect(ret.output).toBe('')
 		sub.arg = null
 		ret.a = a
@@ -1579,7 +1609,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				expect(() => {
 					self.input = 1
 				}).toThrow()
@@ -1599,7 +1629,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				return self.input * 2
 			}
 		)
@@ -1620,7 +1650,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				return self.input * 2
 			}
 		)
@@ -1630,7 +1660,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				return self.input * 4
 			}
 		)
@@ -1654,7 +1684,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			async (self: any) => {
+			async (self: typeinit<typeof tdesc>) => {
 				return new Promise((resolve) => {
 					setTimeout(() => {
 						resolve(self.input * 2)
@@ -1880,24 +1910,26 @@ describe('type', () => {
 			'@class': A,
 			name: string,
 		})
-		const ret = typeinit(tdesc)
+		const ret = <A>(<unknown>typeinit(tdesc))
 		expect(ret).toBeInstanceOf(A)
 		ret.name = 'test'
 		expect(ret.test()).toBe('test')
 	})
 
 	test('initialize struct by wrong custom class', () => {
-		expect(() => {
-			typedef({
-				'@class': true,
-				name: string,
-			})
-		}).toThrow()
+		;[true, 1, {}].forEach((v: any) => {
+			expect(() => {
+				typedef({
+					'@class': v,
+					name: string,
+				})
+			}).toThrow()
+		})
 	})
 
 	test('change', () => {
 		const A = typedef({
-			'@type': any,
+			'@type': unknown,
 			'@change': true,
 			'@value': () => {
 				return {}
@@ -1919,13 +1951,13 @@ describe('type', () => {
 					a: true,
 				},
 			},
-			(self: any) => {
+			(self: typeinit<typeof C>) => {
 				self.out = !self.out
 			}
 		)
 		const c = typeinit(C)
 		const b = c.b
-		const a = b.a
+		const a: any = b.a
 		expect(c.out).toBe(false)
 		change(b)
 		expect(c.out).toBe(false)
@@ -1933,13 +1965,13 @@ describe('type', () => {
 		expect(c.out).toBe(true)
 		change(a)
 		expect(c.out).toBe(false)
-		c.b = null
+		c.b = null!
 		expect(c.out).toBe(false)
 		c.b = b
 		expect(c.out).toBe(true)
 		b.a = 0
 		expect(c.out).toBe(false)
-		c.b = null
+		c.b = null!
 		expect(c.out).toBe(false)
 		c.b = b
 		expect(c.out).toBe(true)
@@ -1949,7 +1981,7 @@ describe('type', () => {
 
 	describe('wrapval', () => {
 		test('the description is invalid', () => {
-			;[null, 1, true, 'test'].forEach((v) => {
+			;[null, 1, true, 'test'].forEach((v: any) => {
 				expect(() => {
 					wrapval(<any>v)
 				}).toThrow()

@@ -16,17 +16,17 @@ describe('builtin', () => {
 		})
 		const ret = typeinit(tdesc)
 		expect(ret.value).toBeDefined()
-		ret.value = void 0
+		ret.value = (void 0)!
 		expect(ret.value).toBeUndefined()
-		ret.value = null
+		ret.value = null!
 		expect(ret.value).toBeNull()
 		ret.value = {}
 		expect(ret.value).toBeInstanceOf(Object)
-		ret.value = []
+		ret.value = <any>[]
 		expect(ret.value).toBeInstanceOf(Array)
 		;[true, 1, 'test'].forEach((v) => {
 			expect(() => {
-				ret.value = v
+				ret.value = <any>v
 			}).toThrow()
 		})
 	})
@@ -37,13 +37,13 @@ describe('builtin', () => {
 		})
 		const ret = typeinit(tdesc)
 		expect(ret.value).toBeDefined()
-		ret.value = void 0
+		ret.value = (void 0)!
 		expect(ret.value).toBeUndefined()
-		ret.value = null
+		ret.value = null!
 		expect(ret.value).toBeNull()
 		ret.value = []
 		expect(ret.value).toBeInstanceOf(Array)
-		;[{}, true, 1, 'test'].forEach((v) => {
+		;[{}, true, 1, 'test'].forEach((v: any) => {
 			expect(() => {
 				ret.value = v
 			}).toThrow()

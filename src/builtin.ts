@@ -5,18 +5,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { typedef, any, TypeDesc } from './type'
+import { typedef, unknown, TypeDesc } from './type'
 
 /**
  * @public
  */
-export const object: Readonly<TypeDesc> = typedef({
+export const object: TypeDesc<Record<string, unknown>> = typedef({
 	'@name': 'object',
-	'@type': any,
+	'@type': unknown,
 	'@value': () => {
 		return {}
 	},
-	'@verify': (self: any) => {
+	'@verify': (self: unknown) => {
 		if (null !== self && void 0 !== self && typeof self !== 'object') {
 			throw TypeError('expected object')
 		}
@@ -26,11 +26,11 @@ export const object: Readonly<TypeDesc> = typedef({
 /**
  * @public
  */
-export const array: Readonly<TypeDesc> = typedef({
+export const array: TypeDesc<unknown[]> = typedef({
 	'@name': 'array',
-	'@type': any,
+	'@type': unknown,
 	'@value': () => [],
-	'@verify': (self: any) => {
+	'@verify': (self: unknown) => {
 		if (null !== self && void 0 !== self && !Array.isArray(self)) {
 			throw TypeError('expected array')
 		}

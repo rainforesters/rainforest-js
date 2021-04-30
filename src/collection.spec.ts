@@ -21,7 +21,7 @@ describe('collection', () => {
 			{
 				arr: true,
 			},
-			(self: any) => {
+			(self: typeinit<typeof tdesc>) => {
 				self.out = !self.out
 			}
 		)
@@ -41,17 +41,17 @@ describe('collection', () => {
 		expect(ret.out).toBe(true)
 		ret.arr.push(1)
 		expect(ret.out).toBe(false)
-		ret.arr.name = 1
+		;(<any>ret.arr).name = 1
 		expect('name' in ret.arr).toBe(true)
 		expect(ret.out).toBe(true)
-		delete ret.arr.name
+		delete (<any>ret.arr).name
 		expect('name' in ret.arr).toBe(false)
 		expect(ret.out).toBe(false)
 		expect(ret.arr).toHaveLength(2)
 
-		ret.arr = void 0
+		ret.arr = (void 0)!
 		expect(ret.arr).toBeUndefined()
-		ret.arr = null
+		ret.arr = null!
 		expect(ret.arr).toBeNull()
 
 		ret.arr = typeinit(CArray)

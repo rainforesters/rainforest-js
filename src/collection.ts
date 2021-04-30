@@ -58,11 +58,11 @@ const CArrayHandler = {
  *
  * @public
  */
-export const CArray: Readonly<TypeDesc> = typedef({
+export const CArray: TypeDesc<unknown[]> = typedef({
 	'@name': 'CArray',
 	'@type': array,
 	'@change': true,
-	'@adjust': (self: any) => {
+	'@adjust': (self: unknown[]) => {
 		if (!self) {
 			return self
 		}
