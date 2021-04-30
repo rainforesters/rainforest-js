@@ -11,7 +11,7 @@ export const array: TypeDesc<unknown[]>;
 export type bool = boolean | never;
 
 // @public (undocumented)
-export const bool: TypeDesc<boolean>;
+export const bool: TypeDesc<bool>;
 
 // @public
 export const CArray: TypeDesc<unknown[]>;
