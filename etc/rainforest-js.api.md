@@ -47,15 +47,15 @@ export function outcome(struct: Struct<StructType>, name?: unknown): Promise<unk
 // @public (undocumented)
 export const string: TypeDesc<string>;
 
-// Warning: (ae-forgotten-export) The symbol "_Struct" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "_Struct_" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type Struct<T extends StructType> = T & _Struct;
+export type Struct<T extends StructType> = T & _Struct_;
 
-// Warning: (ae-forgotten-export) The symbol "structbody" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "_structbody_" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): structbody_2<T>;
+export function structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): _structbody_<T>;
 
 // @public
 export function structof<T extends Struct<StructType>>(struct: T): structof<T>;
@@ -66,19 +66,20 @@ export type structof<T extends Struct<StructType>> = T extends Struct<infer U> ?
 }>> : never;
 
 // Warning: (ae-forgotten-export) The symbol "Desc" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "typedef" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "_typedef_" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function typedef<T extends Desc<T>>(desc: T, tdesc?: typedef_2<T>): typedef_2<T>;
+export function typedef<T extends Desc<T>>(desc: T, tdesc?: _typedef_<T>): _typedef_<T>;
 
-// Warning: (ae-forgotten-export) The symbol "_TypeDesc" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "_TypeDesc_" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export interface TypeDesc<T> extends _TypeDesc<T> {
-}
+export type TypeDesc<T> = _TypeDesc_<T>;
 
+// Warning: (ae-forgotten-export) The symbol "literal" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: unknown): typeinit<T>;
+export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: literal<typeinit<T>>): typeinit<T>;
 
 // Warning: (ae-forgotten-export) The symbol "keysof" needs to be exported by the entry point index.d.ts
 //

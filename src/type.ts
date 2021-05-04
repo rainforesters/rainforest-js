@@ -78,7 +78,7 @@ function hideProp<T>(obj: unknown, key: string | number | symbol, value: T): T {
 	return value
 }
 
-function toFunc(f: Function, msg: string): Function {
+function toFunc(f: unknown, msg: string): Function {
 	if (f) {
 		if (!isFunc(f)) {
 			throw Error(`${msg} is not a function`)
@@ -96,7 +96,7 @@ function isString(v: unknown): v is string {
 	return typeof v === 'string'
 }
 
-function isObject(v: unknown): v is Record<string, any> {
+function isObject(v: unknown): v is Record<string, unknown> {
 	return null !== v && typeof v === 'object'
 }
 
@@ -143,7 +143,7 @@ export function wrapval<T>(
 interface ProtoDesc {
 	[syl_type]: TypeDesc<unknown>
 	[syl_body]: Record<string, FieldDesc> // 可以直接访问的字段集合
-	[syl_proto]: Record<string, any>
+	[syl_proto]: Record<string, PropertyDescriptorMap>
 }
 
 interface FieldDesc {
@@ -169,27 +169,35 @@ type Desc<T> =
 type DescType<T> = {
 	[at_name]: string
 	[at_type]: TypeDesc<unknown>
-	[at_mock]: (self: typeinit<typedef<T>>) => typeinit<typedef<T>>
-	[at_value]: (self: typeinit<typedef<T>>) => typeinit<typedef<T>>
-	[at_adjust]: (self: typeinit<typedef<T>>) => typeinit<typedef<T>>
-	[at_verify]: (self: typeinit<typedef<T>>) => void
-	[at_init]: (self: typeinit<typedef<T>>) => void
-	[at_retain]: (self: typeinit<typedef<T>>) => void
-	[at_release]: (self: typeinit<typedef<T>>) => void
+	[at_mock]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
+	[at_value]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
+	[at_adjust]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
+	[at_verify]: (self: typeinit<_typedef_<T>>) => void
+	[at_init]: (self: typeinit<_typedef_<T>>) => void
+	[at_retain]: (
+		self: typeinit<_typedef_<T>>,
+		parentStruct: Struct<StructType>,
+		fieldName: string
+	) => void
+	[at_release]: (
+		self: typeinit<_typedef_<T>>,
+		parentStruct: Struct<StructType>,
+		fieldName: string
+	) => void
 	[at_noinit]: true
 	[at_notnil]: true
 	[at_change]: true
-	[at_class]: Function
+	[at_class]: { new (): unknown }
 }
 
-interface _TypeDesc<T> {
+interface _TypeDesc_<T> {
 	[syl_name]: string
 	[syl_kind]: Kind
 	[syl_type]: TypeDesc<T>[] // 待修饰的类型描述链
 	[syl_mock]: Function // 实例化时返回模拟数据
 	[syl_value]: Function // 实例化时返回默认数据
-	[syl_verify]: Function // 对数据进行校验
 	[syl_adjust]: Function // 对数据进行修正
+	[syl_verify]: Function // 对数据进行校验
 	[syl_init]: Function // 对数据进行初始化
 	[syl_retain]: Function // 被 struct 引用时调用
 	[syl_release]: Function // 从 struct 中移除时调用
@@ -201,17 +209,17 @@ interface _TypeDesc<T> {
 	[syl_observers]: Map<unknown, ObserveFieldNodeDesc> // 注册的函数集合
 	[syl_accept]: Set<TypeDesc<unknown>> // 能够认可的类型描述集合
 	[syl_proto]: ProtoDesc // struct 原型描述
-	[syl_class]: FunctionConstructor
+	[syl_class]: { new (): unknown }
 }
 
 /**
  * @public
  */
-export interface TypeDesc<T> extends _TypeDesc<T> {}
+export type TypeDesc<T> = _TypeDesc_<T>
 
 const TypeDesc = class TypeDesc {}
 
-interface _Struct {
+type _Struct_ = {
 	[syl_virtual]: VirtualValue[] // 虚拟字段值
 	[syl_observers]: Map<unknown, ObserveNode>
 	[syl_init]: TypeDesc<unknown> // 初始化时的类型描述（可能是修饰后的类型描述）
@@ -219,12 +227,12 @@ interface _Struct {
 	[syl_type]: TypeDesc<unknown>
 }
 
-type StructType = Record<string, any>
+type StructType = Record<string, unknown>
 
 /**
  * @public
  */
-export type Struct<T extends StructType> = T & _Struct
+export type Struct<T extends StructType> = T & _Struct_
 
 const Struct = class Struct {}
 
@@ -589,7 +597,10 @@ function TypeDesc_body(self: TypeDesc<unknown>, body: Record<string, unknown>) {
 	return b
 }
 
-function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc<unknown>) {
+function TypeDesc_define(
+	desc: Record<string, unknown>,
+	tdesc?: TypeDesc<unknown>
+) {
 	if (!isObject(desc)) {
 		throw Error('desc is invalid')
 	}
@@ -605,11 +616,11 @@ function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc<unknown>) {
 		TypeDesc_proto(tdesc)
 		return tdesc
 	}
-	const tt = desc[at_type]
+	const tt = <TypeDesc<unknown>>desc[at_type]
 	if (tt && !isTypeDesc(tt)) {
 		throw TypeError('type is wrong')
 	}
-	const name: string = desc[at_name]
+	const name = <string>desc[at_name]
 	if (name) {
 		if (!isString(name) || !RE_name.test(name)) {
 			throw Error('name is invalid')
@@ -626,8 +637,8 @@ function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc<unknown>) {
 	tdesc[syl_change] = false
 	tdesc[syl_mock] = toFunc(desc[at_mock], at_mock)
 	tdesc[syl_value] = toFunc(desc[at_value], at_value)
-	tdesc[syl_verify] = toFunc(desc[at_verify], at_verify)
 	tdesc[syl_adjust] = toFunc(desc[at_adjust], at_adjust)
+	tdesc[syl_verify] = toFunc(desc[at_verify], at_verify)
 	tdesc[syl_init] = toFunc(desc[at_init], at_init)
 	tdesc[syl_retain] = toFunc(desc[at_retain], at_retain)
 	tdesc[syl_release] = toFunc(desc[at_release], at_release)
@@ -653,14 +664,14 @@ function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc<unknown>) {
 		tdesc[syl_accept] = new Set<TypeDesc<unknown>>().add(tdesc)
 		tdesc[syl_observers] = null!
 		tdesc[syl_proto] = null!
-		const c = desc[at_class]
+		const c = <{ new (): unknown }>desc[at_class]
 		if (c) {
 			if (!isFunc(c)) {
 				throw Error('class is invalid')
 			}
 			tdesc[syl_class] = c
 		} else {
-			tdesc[syl_class] = name ? defineClass(name, Struct) : <any>Struct
+			tdesc[syl_class] = name ? defineClass(name, Struct) : Struct
 		}
 		if (TypeDesc_body(tdesc, desc)) {
 			TypeDesc_proto(tdesc)
@@ -669,7 +680,7 @@ function TypeDesc_define(desc: Record<string, any>, tdesc?: TypeDesc<unknown>) {
 	return Object.seal(tdesc)
 }
 
-function defineClass(name: string, type: Function): FunctionConstructor {
+function defineClass(name: string, type: Function): { new (): unknown } {
 	const c = new Function(`return function ${name}() {}`)()
 	c.prototype = type.prototype
 	return c
@@ -679,7 +690,7 @@ function primitiveDesc<T>(
 	name: string,
 	kind: Kind = Kind.primitive
 ): TypeDesc<T> {
-	const tdesc: TypeDesc<T> = <any>new (defineClass(name, TypeDesc))()
+	const tdesc = <TypeDesc<T>>new (defineClass(name, TypeDesc))()
 	tdesc[syl_kind] = kind
 	tdesc[syl_name] = name
 	return Object.freeze(tdesc)
@@ -727,6 +738,20 @@ type keysof<T> = {
 		: never
 }[keyof T]
 
+type _typedef_<T> = T extends infer O
+	? TypeDesc<
+			O extends { [at_type]: infer U }
+				? U extends TypeDesc<infer V>
+					? V
+					: never
+				: Struct<
+						{
+							[K in keysof<O>]: O[K]
+						}
+				  >
+	  >
+	: never
+
 /**
  * 定义一个新的类型描述
  *
@@ -763,23 +788,36 @@ type keysof<T> = {
  */
 export function typedef<T extends Desc<T>>(
 	desc: T,
-	tdesc?: typedef<T>
-): typedef<T> {
-	return <typedef<T>>TypeDesc_define(desc, tdesc)
+	tdesc?: _typedef_<T>
+): _typedef_<T> {
+	return <_typedef_<T>>TypeDesc_define(desc, tdesc)
 }
 
-type typedef<T> = T extends infer O
-	? TypeDesc<
-			O extends { [at_type]: infer U }
-				? U extends TypeDesc<infer V>
-					? V
-					: never
-				: Struct<
-						{
-							[K in keysof<O>]: O[K]
-						}
-				  >
-	  >
+type literal<T> = T extends Struct<StructType>
+	? {
+			[K in {
+				[K in keyof T]: K extends string ? K : never
+			}[keyof T]]?: literal<T[K]>
+	  }
+	: T
+
+/**
+ * @public
+ */
+export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
+	? U extends Struct<infer V>
+		? V extends Record<string, TypeDesc<unknown>>
+			? Struct<
+					{
+						[K in keysof<U>]: U[K] extends infer O
+							? O extends TypeDesc<unknown>
+								? typeinit<O>
+								: never
+							: never
+					}
+			  >
+			: never
+		: U
 	: never
 
 /**
@@ -812,7 +850,7 @@ type typedef<T> = T extends infer O
  */
 export function typeinit<T extends TypeDesc<unknown>>(
 	tdesc: T,
-	literal?: unknown
+	literal?: literal<typeinit<T>>
 ): typeinit<T> {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
@@ -820,24 +858,7 @@ export function typeinit<T extends TypeDesc<unknown>>(
 	return <typeinit<T>>TypeDesc_init(tdesc, tdesc, literal, null!, false)
 }
 
-/**
- * @public
- */
-export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
-	? U extends Struct<infer V>
-		? V extends Record<string, TypeDesc<unknown>>
-			? Struct<
-					{
-						[K in keysof<U>]: U[K] extends infer O
-							? O extends TypeDesc<unknown>
-								? typeinit<O>
-								: never
-							: never
-					}
-			  >
-			: never
-		: U
-	: never
+type _structbody_<T> = Readonly<T extends TypeDesc<Struct<infer U>> ? U : never>
 
 /**
  * 返回结构体的所有字段
@@ -849,7 +870,7 @@ export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
  */
 export function structbody<
 	T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>
->(tdesc: T): structbody<T> {
+>(tdesc: T): _structbody_<T> {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
@@ -860,24 +881,7 @@ export function structbody<
 		throw TypeError('type is not struct')
 	}
 	TypeDesc_proto(tdesc)
-	return <structbody<T>>tdesc[syl_body]
-}
-
-type structbody<T> = Readonly<T extends TypeDesc<Struct<infer U>> ? U : never>
-
-/**
- * 返回结构体实例的类型描述
- *
- * @param struct - 结构体实例
- * @returns 返回类型描述
- *
- * @public
- */
-export function structof<T extends Struct<StructType>>(struct: T): structof<T> {
-	if (!isStruct(struct)) {
-		throw TypeError('type is not struct')
-	}
-	return <structof<T>>struct[syl_init]
+	return <_structbody_<T>>tdesc[syl_body]
 }
 
 /**
@@ -894,6 +898,21 @@ export type structof<T extends Struct<StructType>> = T extends Struct<infer U>
 			>
 	  >
 	: never
+
+/**
+ * 返回结构体实例的类型描述
+ *
+ * @param struct - 结构体实例
+ * @returns 返回类型描述
+ *
+ * @public
+ */
+export function structof<T extends Struct<StructType>>(struct: T): structof<T> {
+	if (!isStruct(struct)) {
+		throw TypeError('type is not struct')
+	}
+	return <structof<T>>struct[syl_init]
+}
 
 interface ObserveFieldNodeDesc {
 	name: string
@@ -1118,29 +1137,39 @@ function ObserveNode_init(fn: ObserveFieldNodeDesc) {
 
 function ObserveFieldNodeDesc_fields(
 	tdesc: TypeDesc<unknown>,
-	body: Record<string, any>,
-	parent: ObserveFieldNodeDesc,
-	offset: number
+	body: Record<string, unknown>,
+	parent: ObserveFieldNodeDesc
 ) {
 	if (tdesc[syl_kind] === Kind.decorate) {
 		tdesc = tdesc[syl_type][0]
 	}
-	const children = parent.children!
-	const proto = TypeDesc_proto(tdesc)
-	const bd = proto[syl_body]
+	const children = []
+	const bd = TypeDesc_proto(tdesc)[syl_body]
+	let i = 0
 	for (const k of Object.keys(body)) {
 		if (k[0] !== '@') {
 			const fd = bd[k]
 			if (!fd) {
 				throw Error(`field '${k}' is not found`)
 			}
-			parent.test |= 1 << children.length
-			const node = ObserveFieldNodeDesc_init(fd.type, body[k], k)
-			node.bit = children.length
-			node.index = offset + fd.index
-			children.push(node)
+			parent.test |= 1 << i
+			const node = ObserveFieldNodeDesc_init(
+				fd.type,
+				<Record<string, unknown>>body[k],
+				k
+			)
+			node.bit = i
+			node.index = fd.index
+			children[i++] = node
 		}
 	}
+	if (i) {
+		if (i > 32) {
+			throw Error('observed fields is greater than 32')
+		}
+		parent.children = children
+	}
+	return i
 }
 
 function ObserveFieldNodeDesc_init(
@@ -1162,13 +1191,10 @@ function ObserveFieldNodeDesc_init(
 		node.notnil = !!body[at_notnil]
 		if (TypeDesc_kind(tdesc) === Kind.struct) {
 			node.or = !!body[at_or]
-			const children = (node.children = [])
-			ObserveFieldNodeDesc_fields(tdesc, body, node, 0)
-			const len = children.length
-			if (!len) {
-				node.children = null!
-			} else if (len > 32) {
-				throw Error('observed fields is greater than 32')
+			if (!ObserveFieldNodeDesc_fields(tdesc, body, node)) {
+				if (!(at_diff in body || at_notnil in body)) {
+					throw Error('observe has no fields')
+				}
 			}
 		} else if (!(at_diff in body || at_notnil in body)) {
 			throw TypeError('type is not struct')
