@@ -11,7 +11,12 @@ title: API
 **Signature:**
 
 ```ts
-typedef<T extends Desc<T>>(desc: T, tdesc?: _typedef_<T>): _typedef_<T>
+typedef<
+  T extends Desc<T>
+>(
+  desc: T,
+  tdesc?: _typedef_<T>
+): _typedef_<T>
 ```
 
 **Parameters:**
@@ -62,7 +67,12 @@ typedef(
 **Signature:**
 
 ```ts
-typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: literal<typeinit<T>>): typeinit<T>
+typeinit<
+  T extends TypeDesc<unknown>
+>(
+  tdesc: T,
+  literal?: literal<typeinit<T>>
+): typeinit<T>
 ```
 
 **Parameters:**
@@ -101,7 +111,13 @@ const Hermione = typeinit(Person, {
 **Signature:**
 
 ```ts
-structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): _structbody_<T>
+structbody<
+  T extends TypeDesc<
+    Struct<Record<string, TypeDesc<unknown>>>
+  >
+>(
+  tdesc: T
+): _structbody_<T>
 ```
 
 **Parameters:**
@@ -119,7 +135,11 @@ structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc:
 **Signature:**
 
 ```ts
-structof<T extends Struct<StructType>>(struct: T): structof<T>
+structof<
+  T extends Struct<StructType>
+>(
+  struct: T
+): structof<T>
 ```
 
 **Parameters:**
@@ -137,7 +157,16 @@ structof<T extends Struct<StructType>>(struct: T): structof<T>
 **Signature:**
 
 ```ts
-funcdef<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void
+funcdef<
+  T extends TypeDesc<
+    Struct<Record<string, TypeDesc<unknown>>>
+  >
+>(
+  tdesc: T,
+  name: unknown,
+  observe: observe<T>,
+  func: (self: typeinit<T>) => unknown
+): void
 ```
 
 **Parameters:**
@@ -189,7 +218,10 @@ console.log(myself.intro)
 **Signature:**
 
 ```ts
-outcome(struct: Struct<StructType>, name?: unknown): Promise<unknown>
+outcome(
+  struct: Struct<StructType>,
+  name?: unknown
+): Promise<unknown>
 ```
 
 **Parameters:**
@@ -237,7 +269,9 @@ console.log(await asyncResult)
 **Signature:**
 
 ```ts
-change(obj: Record<any, any>): void
+change(
+  obj: Record<any, any>
+): void
 ```
 
 **Parameters:**
@@ -255,7 +289,12 @@ change(obj: Record<any, any>): void
 **Signature:**
 
 ```ts
-wrapval<T>(desc: Record<string, unknown>, val?: T): Readonly<T>
+wrapval<
+  T
+>(
+  desc: Record<string, unknown>,
+  val?: T
+): Readonly<T>
 ```
 
 **Parameters:**
