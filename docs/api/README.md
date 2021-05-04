@@ -11,17 +11,17 @@ title: API
 **Signature:**
 
 ```ts
-typedef(desc: any, tdesc?: TypeDesc): TypeDesc
+typedef<T extends Desc<T>>(desc: T, tdesc?: _typedef_<T>): _typedef_<T>
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                                 |
-| --------- | -------- | ------------------------------------------- |
-| desc      | any      | 描述类型的规则和结构                        |
-| tdesc     | TypeDesc | 适用于先声明空的 Struct，然后再定义全部字段 |
+| Parameter | Type                 | Description                                 |
+| --------- | -------------------- | ------------------------------------------- |
+| desc      | T                    | 描述类型的规则和结构                        |
+| tdesc     | \_typedef\_&lt;T&gt; | 适用于先声明空的 Struct，然后再定义全部字段 |
 
-**Returns:** TypeDesc
+**Returns:** \_typedef\_&lt;T&gt;
 
 **Example 1**
 
@@ -35,8 +35,16 @@ const Person = typedef({
 **Example 2**
 
 ```ts
+// 类型别名
+type Person = TypeDesc<
+  Struct<{
+    name: TypeDesc<string>
+    sex: TypeDesc<bool>
+    cosplay: Person
+  }>
+>
 // 先声明空的 Struct
-const Person = typedef({})
+const Person: Person = typedef({})
 typedef(
   {
     name: string,
@@ -54,17 +62,17 @@ typedef(
 **Signature:**
 
 ```ts
-typeinit(tdesc: TypeDesc, literal?: any): any
+typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: literal<typeinit<T>>): typeinit<T>
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description      |
-| --------- | -------- | ---------------- |
-| tdesc     | TypeDesc | 类型描述         |
-| literal   | any      | 指定明确的字面值 |
+| Parameter | Type                             | Description      |
+| --------- | -------------------------------- | ---------------- |
+| tdesc     | T                                | 类型描述         |
+| literal   | literal&lt;typeinit&lt;T&gt;&gt; | 指定明确的字面值 |
 
-**Returns:** any
+**Returns:** typeinit&lt;T&gt;
 
 **Example**
 
@@ -93,16 +101,16 @@ const Hermione = typeinit(Person, {
 **Signature:**
 
 ```ts
-structbody(tdesc: TypeDesc): Record<string, TypeDesc>
+structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): _structbody_<T>
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description      |
-| --------- | -------- | ---------------- |
-| tdesc     | TypeDesc | 结构体的类型描述 |
+| Parameter | Type | Description      |
+| --------- | ---- | ---------------- |
+| tdesc     | T    | 结构体的类型描述 |
 
-**Returns:** Record&lt;string, TypeDesc&gt;
+**Returns:** \_structbody\_&lt;T&gt;
 
 ### structof
 
@@ -111,16 +119,16 @@ structbody(tdesc: TypeDesc): Record<string, TypeDesc>
 **Signature:**
 
 ```ts
-structof(struct: Struct): TypeDesc
+structof<T extends Struct<StructType>>(struct: T): structof<T>
 ```
 
 **Parameters:**
 
-| Parameter | Type   | Description |
-| --------- | ------ | ----------- |
-| struct    | Struct | 结构体实例  |
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| struct    | T    | 结构体实例  |
 
-**Returns:** TypeDesc
+**Returns:** structof&lt;T&gt;
 
 ### funcdef
 
@@ -129,22 +137,17 @@ structof(struct: Struct): TypeDesc
 **Signature:**
 
 ```ts
-funcdef(
-  tdesc: TypeDesc,
-  name: any,
-  observe: any,
-  func: Function
-): void
+funcdef<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                              |
-| --------- | -------- | ---------------------------------------- |
-| tdesc     | TypeDesc | 类型描述                                 |
-| name      | any      | 函数名                                   |
-| observe   | any      | 描述需要观察的字段规则                   |
-| func      | Function | 当待观察的字段符合描述的规则时触发该函数 |
+| Parameter | Type                                    | Description                              |
+| --------- | --------------------------------------- | ---------------------------------------- |
+| tdesc     | T                                       | 类型描述                                 |
+| name      | unknown                                 | 函数名                                   |
+| observe   | observe&lt;T&gt;                        | 描述需要观察的字段规则                   |
+| func      | (self: typeinit&lt;T&gt;) =&gt; unknown | 当待观察的字段符合描述的规则时触发该函数 |
 
 **Returns:** void
 
@@ -165,7 +168,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof Person>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
   }
 )
@@ -186,15 +189,15 @@ console.log(myself.intro)
 **Signature:**
 
 ```ts
-outcome(struct: Struct, name?: any): Promise<unknown>
+outcome(struct: Struct<StructType>, name?: unknown): Promise<unknown>
 ```
 
 **Parameters:**
 
-| Parameter | Type   | Description                            |
-| --------- | ------ | -------------------------------------- |
-| struct    | Struct | 结构体实例                             |
-| name      | any    | 函数名，如果未指定则默认获取第一个函数 |
+| Parameter | Type                     | Description                            |
+| --------- | ------------------------ | -------------------------------------- |
+| struct    | Struct&lt;StructType&gt; | 结构体实例                             |
+| name      | unknown                  | 函数名，如果未指定则默认获取第一个函数 |
 
 **Returns:** Promise&lt;unknown&gt;
 
@@ -209,7 +212,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof Person>) => {
     return (self.intro = `My name is ${self.name}, I am a ${
       self.sex ? 'girl' : 'boy'
     }.`)
@@ -234,14 +237,14 @@ console.log(await asyncResult)
 **Signature:**
 
 ```ts
-change(obj: any): void
+change(obj: Record<any, any>): void
 ```
 
 **Parameters:**
 
-| Parameter | Type | Description            |
-| --------- | ---- | ---------------------- |
-| obj       | any  | 包含内部数据的任意对象 |
+| Parameter | Type                   | Description            |
+| --------- | ---------------------- | ---------------------- |
+| obj       | Record&lt;any, any&gt; | 包含内部数据的任意对象 |
 
 **Returns:** void
 
@@ -252,21 +255,21 @@ change(obj: any): void
 **Signature:**
 
 ```ts
-wrapval(desc: any, val?: any): any
+wrapval<T>(desc: Record<string, unknown>, val?: T): Readonly<T>
 ```
 
 **Parameters:**
 
-| Parameter | Type | Description |
-| --------- | ---- | ----------- |
-| desc      | any  | 描述说明    |
-| val       | any  | 被包装的值  |
+| Parameter | Type                          | Description |
+| --------- | ----------------------------- | ----------- |
+| desc      | Record&lt;string, unknown&gt; | 描述说明    |
+| val       | T                             | 被包装的值  |
 
-**Returns:** any
+**Returns:** Readonly&lt;T&gt;
 
 ## 基本类型
 
-### any
+### unknown
 
 ### bool
 

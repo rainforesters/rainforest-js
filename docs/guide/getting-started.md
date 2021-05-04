@@ -41,7 +41,7 @@ funcdef(
     sex: true,
     age: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${
       self.sex ? 'girl' : 'boy'
     } and I am ${self.age} years old.`

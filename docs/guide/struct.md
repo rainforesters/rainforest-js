@@ -60,7 +60,7 @@ console.log(myself)
 
 ```ts
 const myself = typeinit(MyStruct, {
-  contact: null,
+  contact: null!,
 })
 console.log(myself)
 // output: { name: '', sex: false, contact: null }
@@ -148,7 +148,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     // 函数体
     // 结构体的字段值，可以理解为函数返回值
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
@@ -221,7 +221,7 @@ funcdef(
       email: true,
     },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
     if (self.contact) {
       self.intro += `
@@ -278,7 +278,7 @@ funcdef(
       email: true,
     },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.
 My phone number is ${self.contact.phone} and email is ${self.contact.email}.`
   }
@@ -286,7 +286,7 @@ My phone number is ${self.contact.phone} and email is ${self.contact.email}.`
 const myself = typeinit(MyStruct)
 myself.name = 'Amy'
 myself.sex = true
-myself.contact = null
+myself.contact = null!
 // 此时尚未触发生成个人介绍的函数，
 // intro 依然为空，因为 contact 未被有效赋值
 console.log(myself.intro)
@@ -321,7 +321,7 @@ funcdef(
       email: true,
     },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.
 My phone number is ${self.contact.phone} and email is ${self.contact.email}.`
   }
@@ -368,7 +368,7 @@ funcdef(
   {
     contact: { '@diff': true },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My phone number is ${self.contact.phone} and email is ${self.contact.email}.`
   }
 )
@@ -407,7 +407,7 @@ funcdef(
       email: true,
     },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My phone number is ${self.contact.phone} and email is ${self.contact.email}.`
   }
 )
@@ -450,7 +450,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
   }
 )
@@ -486,7 +486,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
     console.log(1)
   }
@@ -499,7 +499,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.homepage = `https://example.com/${self.sex ? 'female' : 'male'}/${
       self.name
     }`
@@ -525,7 +525,7 @@ funcdef(
     name: true,
     sex: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
     console.log(1)
   }
@@ -537,7 +537,7 @@ funcdef(
   {
     name: true, // 只观察名字
   },
-  (self: Struct) => {
+  (self: typeinit<typeof MyStruct>) => {
     self.homepage = `https://example.com/${self.name}`
     console.log(2)
   }
@@ -672,11 +672,12 @@ funcdef(
   'tempFunc',
   {
     ref: {
+      '@notnil': true,
       name: true,
       sex: true,
     },
   },
-  (self: Struct) => {
+  (self: typeinit<typeof TempStruct>) => {
     console.log(self.ref.name, self.ref.sex ? 'female' : 'male')
   }
 )
@@ -690,7 +691,7 @@ myself.sex = true
 // output: Amy female
 
 // 解除绑定也很简单
-temp.ref = null
+temp.ref = null!
 // myself 又回到了原来的状态，仿佛一切都没有发生过
 ```
 
@@ -730,17 +731,25 @@ console.log(typeinit(Contact))
 
 ## @retain & @release
 
-这是一对修饰符，用来修饰类型为 `Struct` 或 `any` 的字段类型。
+这是一对修饰符，用来修饰类型为 `Struct` 或 `unknown` 的字段类型。
 
 这并不常用，但在某些场景下，这会非常有用并且好用。  
 比如：引用计数，或者追踪引用情况。
 
 ```ts
 const Ref = typedef({
-  '@retain': (self: Struct, parentStruct: Struct, fieldName: string) => {
+  '@retain': (
+    self: Struct<{ count: int32 }>,
+    parentStruct: Struct<Record<string, unknown>>,
+    fieldName: string
+  ) => {
     self.count++
   },
-  '@release': (self: Struct, parentStruct: Struct, fieldName: string) => {
+  '@release': (
+    self: Struct<{ count: int32 }>,
+    parentStruct: Struct<Record<string, unknown>>,
+    fieldName: string
+  ) => {
     self.count--
   },
   count: int32,
@@ -773,9 +782,9 @@ console.log(ref.count, conA.ref.count, conB.ref.count)
 // output: 2 2 2
 // 此时 ref 被 conA 和 conB 引用了 2 次
 
-conA.ref = null
+conA.ref = null!
 console.log(ref.count) // output: 1
-conB.ref = null
+conB.ref = null!
 console.log(ref.count) // output: 0
 ```
 
@@ -818,7 +827,7 @@ myself.print() // output: My name is Amy, I am a girl.
 ## @change
 
 用来标记手动管理数据内部变动情况。  
-适用于 `any` 类型。
+适用于 `unknown` 类型。
 
 因为只有 `Struct` 是可以自动响应变化的，但有些情况下，我们也希望自定义的类型也能具备响应性。  
 所以，那么我们就需要手动让其具备响应性。
@@ -827,7 +836,7 @@ myself.print() // output: My name is Amy, I am a girl.
 
 ```ts
 const ReactiveArray = typedef({
-  '@type': array,
+  '@type': array as TypeDesc<int32[]>,
   '@change': true,
 })
 const ReactiveStruct = typedef({
@@ -840,7 +849,7 @@ funcdef(
   {
     arr: true,
   },
-  (self: Struct) => {
+  (self: typeinit<typeof ReactiveStruct>) => {
     let hash = 5381
     for (const v of self.arr) {
       hash += (hash << 5) + v

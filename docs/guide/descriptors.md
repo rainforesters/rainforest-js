@@ -72,7 +72,7 @@ const DecoratedStruct = typedef({
 console.log(typeinit(int32, wrapval({ '@mock': true })))
 ```
 
-我们使用 `wrapval(desc: any, value?: any)` 来将描述和原始值包装在一起。  
+我们使用 [wrapval](/api/#wrapval) 来将描述和原始值包装在一起。  
 这里只需要描述来表明生成模拟数据，所以原始值是可以忽略的。
 
 ## @verify
@@ -80,7 +80,7 @@ console.log(typeinit(int32, wrapval({ '@mock': true })))
 用来自定义校验规则。
 
 ```ts
-'@verify': (val) => {
+'@verify': (val: unknown) => {
   // 校验值是否符合预期规则，
   // 如果不符合，应抛出错误。
   throw Error('Invalid value')
@@ -112,14 +112,14 @@ console.log(typeinit(int32, wrapval({ '@mock': true })))
 这是唯一的生命周期函数。在 [@value](#value) 或 [@mock](#mock) 之后，只会执行一次。
 
 ```ts
-'@init': (val: Struct) => { // 注意：没有返回值
+'@init': (val: Struct<{ name: string }>) => { // 注意：没有返回值
   val.name = 'Amy'
 }
 ```
 
 只有当数据不为 `null` 或 `undefined` 时才会执行。
 
-因为没有返回值，所以只对 `Struct` 或 `any` 的类型及其修饰才有意义。
+因为没有返回值，所以只对 `Struct` 或 `unknown` 的类型及其修饰才有意义。
 
 ## @notnil
 

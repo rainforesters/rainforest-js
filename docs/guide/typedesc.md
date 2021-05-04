@@ -60,7 +60,7 @@ myself.email = 'amy@example,com' // Throw the error.
 
 | 基本类型描述 |   说明   |
 | ------------ | :------: |
-| any          | 任意类型 |
+| unknown      | 未知类型 |
 | bool         | 布尔类型 |
 | int32        |   整型   |
 | float64      |  浮点型  |
