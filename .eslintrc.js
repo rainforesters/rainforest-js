@@ -6,7 +6,6 @@ module.exports = {
 		'eslint:recommended',
 		'plugin:@typescript-eslint/recommended',
 		'prettier',
-		'prettier/@typescript-eslint',
 	],
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
@@ -23,16 +22,10 @@ module.exports = {
 				},
 			},
 		],
-		'@typescript-eslint/explicit-module-boundary-types': [
-			'warn',
-			{
-				allowArgumentsExplicitlyTypedAsAny: true,
-			},
-		],
+		'@typescript-eslint/explicit-module-boundary-types': 'error',
 		'@typescript-eslint/no-explicit-any': 'off',
-		'@typescript-eslint/no-empty-interface': 'off',
 		'@typescript-eslint/no-non-null-assertion': 'off',
-		'no-unused-vars': 'error',
+		'@typescript-eslint/no-unused-vars': 'error',
 		indent: [
 			'error',
 			'tab',
@@ -43,6 +36,7 @@ module.exports = {
 		],
 		'linebreak-style': ['error', 'unix'],
 		'no-mixed-spaces-and-tabs': ['error', 'smart-tabs'],
+		'no-unused-vars': 'off',
 		quotes: ['error', 'single'],
 		semi: ['error', 'never'],
 	},
