@@ -25,10 +25,11 @@ export type float64 = number | (1 & never[]);
 // @public (undocumented)
 export const float64: TypeDesc<float64>;
 
+// Warning: (ae-forgotten-export) The symbol "StructTypeDesc" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "observe" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function funcdef<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void;
+export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void;
 
 // @public (undocumented)
 export type int32 = number | (0 & never[]);
@@ -55,7 +56,7 @@ export type Struct<T extends StructType> = T & _Struct_;
 // Warning: (ae-forgotten-export) The symbol "_structbody_" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function structbody<T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>>(tdesc: T): _structbody_<T>;
+export function structbody<T extends TypeDesc<Struct<StructTypeDesc>>>(tdesc: T): _structbody_<T>;
 
 // @public
 export function structof<T extends Struct<StructType>>(struct: T): structof<T>;
@@ -84,7 +85,7 @@ export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: litera
 // Warning: (ae-forgotten-export) The symbol "keysof" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> ? U extends Struct<infer V> ? V extends Record<string, TypeDesc<unknown>> ? Struct<{
+export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> ? U extends Struct<infer V> ? V extends StructTypeDesc ? Struct<{
     [K in keysof<U>]: U[K] extends infer O ? O extends TypeDesc<unknown> ? typeinit<O> : never : never;
 }> : never : U : never;
 

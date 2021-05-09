@@ -190,25 +190,82 @@ type DescType<T> = {
 	[at_class]: { new (): unknown }
 }
 
+declare const __type__: unique symbol
+
 interface _TypeDesc_<T> {
+	[__type__]: 'TypeDesc'
+	/**
+	 * @internal
+	 */
 	[syl_name]: string
+	/**
+	 * @internal
+	 */
 	[syl_kind]: Kind
+	/**
+	 * @internal
+	 */
 	[syl_type]: TypeDesc<T>[] // 待修饰的类型描述链
+	/**
+	 * @internal
+	 */
 	[syl_mock]: Function // 实例化时返回模拟数据
+	/**
+	 * @internal
+	 */
 	[syl_value]: Function // 实例化时返回默认数据
+	/**
+	 * @internal
+	 */
 	[syl_adjust]: Function // 对数据进行修正
+	/**
+	 * @internal
+	 */
 	[syl_verify]: Function // 对数据进行校验
+	/**
+	 * @internal
+	 */
 	[syl_init]: Function // 对数据进行初始化
+	/**
+	 * @internal
+	 */
 	[syl_retain]: Function // 被 struct 引用时调用
+	/**
+	 * @internal
+	 */
 	[syl_release]: Function // 从 struct 中移除时调用
+	/**
+	 * @internal
+	 */
 	[syl_noinit]: boolean // 禁用自动实例化，只能手动实例化
+	/**
+	 * @internal
+	 */
 	[syl_notnil]: boolean // 不允许为空
+	/**
+	 * @internal
+	 */
 	[syl_change]: boolean // 标记会手动管理数据内部变动情况（适用于 Array Set Map 等）
 
-	[syl_body]: Record<string, TypeDesc<unknown>> // struct 字段集合
+	/**
+	 * @internal
+	 */
+	[syl_body]: StructTypeDesc // struct 字段集合
+	/**
+	 * @internal
+	 */
 	[syl_observers]: Map<unknown, ObserveFieldNodeDesc> // 注册的函数集合
+	/**
+	 * @internal
+	 */
 	[syl_accept]: Set<TypeDesc<unknown>> // 能够认可的类型描述集合
+	/**
+	 * @internal
+	 */
 	[syl_proto]: ProtoDesc // struct 原型描述
+	/**
+	 * @internal
+	 */
 	[syl_class]: { new (): unknown }
 }
 
@@ -220,14 +277,28 @@ export type TypeDesc<T> = _TypeDesc_<T>
 const TypeDesc = class TypeDesc {}
 
 type _Struct_ = {
+	[__type__]: 'Struct'
+	/**
+	 * @internal
+	 */
 	[syl_virtual]: VirtualValue[] // 虚拟字段值
+	/**
+	 * @internal
+	 */
 	[syl_observers]: Map<unknown, ObserveNode>
+	/**
+	 * @internal
+	 */
 	[syl_init]: TypeDesc<unknown> // 初始化时的类型描述（可能是修饰后的类型描述）
 
+	/**
+	 * @internal
+	 */
 	[syl_type]: TypeDesc<unknown>
 }
 
 type StructType = Record<string, unknown>
+type StructTypeDesc = Record<string, TypeDesc<unknown>>
 
 /**
  * @public
@@ -571,6 +642,9 @@ function TypeDesc_proto(self: TypeDesc<unknown>): ProtoDesc {
 		}
 		descs[k] = propDef(index++)
 	}
+	if (!index) {
+		throw Error('empty struct is invalid')
+	}
 	Object.defineProperties(proto, descs)
 	Object.setPrototypeOf(proto, self[syl_class].prototype)
 	Object.freeze(proto)
@@ -806,7 +880,7 @@ type literal<T> = T extends Struct<StructType>
  */
 export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
 	? U extends Struct<infer V>
-		? V extends Record<string, TypeDesc<unknown>>
+		? V extends StructTypeDesc
 			? Struct<
 					{
 						[K in keysof<U>]: U[K] extends infer O
@@ -868,9 +942,9 @@ type _structbody_<T> = Readonly<T extends TypeDesc<Struct<infer U>> ? U : never>
  *
  * @public
  */
-export function structbody<
-	T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>
->(tdesc: T): _structbody_<T> {
+export function structbody<T extends TypeDesc<Struct<StructTypeDesc>>>(
+	tdesc: T
+): _structbody_<T> {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
@@ -1210,7 +1284,7 @@ type ObserveDesc = {
 
 type ObserveField<T> = T extends TypeDesc<infer U>
 	? U extends Struct<infer V>
-		? V extends Record<string, TypeDesc<unknown>>
+		? V extends StructTypeDesc
 			?
 					| {
 							[K in keysof<U>]?: ObserveField<U[K]>
@@ -1273,9 +1347,7 @@ type observe<T> = T extends TypeDesc<infer U>
  *
  * @public
  */
-export function funcdef<
-	T extends TypeDesc<Struct<Record<string, TypeDesc<unknown>>>>
->(
+export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 	tdesc: T,
 	name: unknown,
 	observe: observe<T>,

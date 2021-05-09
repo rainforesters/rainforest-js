@@ -13,9 +13,7 @@ import { typedef, unknown, TypeDesc } from './type'
 export const object: TypeDesc<Record<string, unknown>> = typedef({
 	'@name': 'object',
 	'@type': unknown,
-	'@value': () => {
-		return {}
-	},
+	'@value': () => ({}),
 	'@verify': (self: unknown) => {
 		if (null !== self && void 0 !== self && typeof self !== 'object') {
 			throw TypeError('expected object')

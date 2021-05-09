@@ -41,12 +41,6 @@ describe('type', () => {
 		expect(body.trend).toBe(float64)
 	})
 
-	test('define an empty struct', () => {
-		const tdesc = typedef({})
-		expect(tdesc).toBeInstanceOf(Object)
-		expect(Object.keys(structbody(tdesc)).length).toBe(0)
-	})
-
 	test('declare an empty struct before, then complete its fields', () => {
 		type tdesc = TypeDesc<
 			Struct<{
@@ -63,16 +57,10 @@ describe('type', () => {
 		expect(structbody(tdesc).next).toBe(tdesc)
 	})
 
-	test('cannot redefine an empty struct if it has been used', () => {
+	test('cannot use an empty struct', () => {
 		const tdesc = typedef({})
-		typeinit(tdesc)
 		expect(() => {
-			typedef(
-				{
-					next: tdesc,
-				},
-				tdesc
-			)
+			typeinit(tdesc)
 		}).toThrow()
 	})
 
@@ -495,8 +483,12 @@ describe('type', () => {
 	})
 
 	test('assign struct with wrong type', () => {
-		const A = typedef({})
-		const B = typedef({})
+		const A = typedef({
+			value: bool,
+		})
+		const B = typedef({
+			value: bool,
+		})
 		const C = typedef({
 			'@type': B,
 		})
@@ -1877,8 +1869,12 @@ describe('type', () => {
 	})
 
 	test('initialize struct with wrong type of literal value', () => {
-		const A = typedef({})
-		const B = typedef({})
+		const A = typedef({
+			value: bool,
+		})
+		const B = typedef({
+			value: bool,
+		})
 		const ret = typeinit(A)
 		expect(typeinit(A, ret)).toBe(ret)
 		;[typeinit(B), true, 1, 'test'].forEach((v: any) => {
@@ -1970,9 +1966,7 @@ describe('type', () => {
 		const A = typedef({
 			'@type': unknown,
 			'@change': true,
-			'@value': () => {
-				return {}
-			},
+			'@value': () => ({}),
 		})
 		const B = typedef({
 			a: A,
