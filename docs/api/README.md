@@ -112,9 +112,7 @@ const Hermione = typeinit(Person, {
 
 ```ts
 structbody<
-  T extends TypeDesc<
-    Struct<Record<string, TypeDesc<unknown>>>
-  >
+  T extends TypeDesc<Struct<StructTypeDesc>>
 >(
   tdesc: T
 ): _structbody_<T>
@@ -158,9 +156,7 @@ structof<
 
 ```ts
 funcdef<
-  T extends TypeDesc<
-    Struct<Record<string, TypeDesc<unknown>>>
-  >
+  T extends TypeDesc<Struct<StructTypeDesc>>
 >(
   tdesc: T,
   name: unknown,
