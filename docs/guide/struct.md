@@ -124,13 +124,13 @@ const myself = typeinit(MyStruct, {
 接下来，我们赋予其自动化编程的能力。  
 由此，我们便实现了结构、安全、自动化的数据结构化编程。
 
-## 定义函数
+## 定义规则
 
-在保证结构体概念纯粹性的情况下，我们提供了隐式的函数来实现自动化。  
+在保证结构体概念纯粹性的情况下，我们采用定义规则来实现自动化。  
 这样我们就能依旧按原有的简单方式来使用结构体。  
 所以我们认知到，结构体上只有字段，并且一直都是只有字段，这就是简单纯粹性。
 
-使用 [funcdef](/api/#funcdef) 来定义函数。
+使用 [ruledef](/api/#ruledef) 来定义规则。
 
 ```ts
 const MyStruct = typedef({
@@ -139,17 +139,17 @@ const MyStruct = typedef({
   intro: string,
 })
 
-// 定义函数
-funcdef(
+// 定义规则
+ruledef(
   MyStruct,
-  'generateIntroduction', // 函数名
+  'generateIntroduction', // 规则名（可以理解为函数名）
   {
     // 待观察的字段描述（可以理解为参数）
     name: true,
     sex: true,
   },
   (self: typeinit<typeof MyStruct>) => {
-    // 函数体
+    // 执行规则的具体实现，可以理解为函数体
     // 结构体的字段值，可以理解为函数返回值
     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
   }
@@ -157,27 +157,28 @@ funcdef(
 ```
 
 这和普通函数由名称、参数、函数体、返回值几部分组成的原理一样。  
-其中参数部分，我们换成了 **待观察的字段描述** 这一个新的概念。  
+其中函数名，我们换成了规则名。  
+参数部分，我们换成了 **待观察的字段描述** 这一个新的概念。  
 返回值，我们换成了结构体的字段值。
 
-我们需要简单讲一下原理，来了解函数的行为方式。
+我们需要简单讲一下原理，来了解规则的行为方式。
 
-首先，我们的函数是定义于结构体上的，我们使用结构体的字段来作为参数。  
-那么问题来了，什么时候触发函数呢？当然是参数全部传入的时候。  
+首先，我们的规则是定义于结构体上的，我们使用结构体的字段来作为参数。  
+那么问题来了，什么时候执行规则呢？当然是参数全部传入的时候。  
 问题二，怎么算是参数传入呢？字段赋值就是参数传入。  
-所以，当待观察的字段都被赋值时，就会自动执行函数。  
+所以，当待观察的字段都被赋值时，就会自动执行规则。  
 我们由此也能获知一个特性，就是参数传入不依赖于顺序。这个概念也很重要。  
-这样我们就容易理解了：**当预期的字段数据都准备好时，会自动执行函数。**
+这样我们就容易理解了：**当预期的字段数据都准备好时，会自动执行规则。**
 
 ::: tip 提示
 这就方便让我们的思维方式转变成：**为结构体填充数据，就能获得结果。**  
 编程就是填充数据。是不是豁然开朗了。
 :::
 
-## 使用函数
+## 执行规则
 
-我们不需要明确指定调用函数，我们只需要为结构体的字段赋值。  
-如果函数应该执行，那么它就会在合适的时机执行。一切都是自动化的。
+我们不需要明确指定执行某一规则，我们只需要为结构体的字段赋值。  
+如果规则应该执行，那么它就会在合适的时机执行。一切都是自动化的。
 
 所以我们对结构体的唯一操作就是为字段赋值。这保持了操作的单一性。
 
@@ -210,7 +211,7 @@ const MyStruct = typedef({
   contact: Contact,
   intro: string,
 })
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -263,17 +264,17 @@ console.log(myself.intro)
 ## @notnil
 
 用来表明该字段不能为空，也就是只有赋值不为空时，才算满足赋值条件。  
-这让我们能在函数体里安全的使用字段。
+这让我们能在规则实现里安全的使用字段。
 
 ```ts
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
     name: true,
     sex: true,
     contact: {
-      '@notnil': true, // 表明 contact 不能为空，所以函数体里可以安全使用该字段。
+      '@notnil': true, // 表明 contact 不能为空，所以规则实现里可以安全使用该字段。
       phone: true,
       email: true,
     },
@@ -287,7 +288,7 @@ const myself = typeinit(MyStruct)
 myself.name = 'Amy'
 myself.sex = true
 myself.contact = null!
-// 此时尚未触发生成个人介绍的函数，
+// 此时尚未执行生成个人介绍的规则，
 // intro 依然为空，因为 contact 未被有效赋值
 console.log(myself.intro)
 
@@ -303,14 +304,14 @@ console.log(myself.intro)
 ```
 
 这样，即使子结构体暂时还不存在，我们也能提前预设条件，能够极大方便编程。  
-一旦子结构体被赋值，那么就会满足条件触发函数。所有都按照预期正常执行。
+一旦子结构体被赋值，那么就会满足条件，执行规则。所有都按照预期正常执行。
 
 ## @diff
 
 用来忽略相同的赋值，也就是只有赋值不同时，才算满足赋值条件。
 
 ```ts
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -362,7 +363,7 @@ const MyStruct = typedef({
   contact: Contact,
   intro: string,
 })
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -397,7 +398,7 @@ console.log(myself.intro)
 情况二，如果也观察了子结构体的字段，那么除了必须赋值不同的结构体外，子结构体内部的字段改变也算是整个子结构体发生改变。
 
 ```ts
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -433,8 +434,8 @@ console.log(myself.intro)
 只要结构体的待观察字段有一个发生改变，那么就算所有字段都满足条件。  
 只能用于描述结构体。
 
-之前都是在所有字段都发生改变时，才算满足触发函数的条件。  
-现在我们来讲一下，不需要字段全部发生改变，就可以触发函数的情况。
+之前都是在所有字段都发生改变时，才算满足执行规则的条件。  
+现在我们来讲一下，不需要字段全部发生改变，就可以执行规则的情况。
 
 ```ts
 const MyStruct = typedef({
@@ -442,7 +443,7 @@ const MyStruct = typedef({
   sex: bool,
   intro: string,
 })
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -465,11 +466,11 @@ myself.sex = true
 console.log(myself.intro) // output: My name is Amy, I am a girl.
 ```
 
-## 同时使用多个函数
+## 同时使用多个规则
 
-一个结构体上可以定义多个函数。  
+一个结构体上可以定义多个规则。  
 其中，待观察的字段描述可以相同，也可以不同。
-所以，某一个字段被赋值时，可能会同时执行多个函数，执行顺序按照函数定义的顺序，越早定义，越早执行。
+所以，某一个字段被赋值时，可能会同时执行多个规则，执行顺序按照规则定义的顺序，越早定义，越早执行。
 
 ```ts
 const MyStruct = typedef({
@@ -479,7 +480,7 @@ const MyStruct = typedef({
   homepage: string,
 })
 
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -492,7 +493,7 @@ funcdef(
   }
 )
 
-funcdef(
+ruledef(
   MyStruct,
   'generateHomepage',
   {
@@ -510,15 +511,15 @@ funcdef(
 const myself = typeinit(MyStruct)
 myself.name = 'Amy'
 myself.sex = true
-// 同时执行两个函数，执行顺序为：先生成个人介绍，然后生成个人首页
+// 同时执行两个规则，执行顺序为：先生成个人介绍，然后生成个人首页
 // output: 1
 // output: 2
 ```
 
-即使靠后定义的函数，所观察的字段比之前定义的函数少，也严格按照定义顺序执行。
+即使靠后定义的规则，所观察的字段比之前定义的规则少，也严格按照定义顺序执行。
 
 ```ts
-funcdef(
+ruledef(
   MyStruct,
   'generateIntroduction',
   {
@@ -531,7 +532,7 @@ funcdef(
   }
 )
 
-funcdef(
+ruledef(
   MyStruct,
   'generateHomepage',
   {
@@ -547,29 +548,29 @@ const myself = typeinit(MyStruct)
 myself.sex = true
 // 延后设置名字
 myself.name = 'Amy'
-// 同时执行两个函数，执行顺序为：先生成个人介绍，然后生成个人首页
+// 同时执行两个规则，执行顺序为：先生成个人介绍，然后生成个人首页
 // output: 1
 // output: 2
 ```
 
 ## outcome
 
-获取函数的执行结果。
+获取规则执行的结果。
 
-我们推荐将结果作为结构体的字段值，但是某些时候我们依然想获得这个函数的执行结果。  
-比如，我们需要确认函数是否被执行了，因为函数可能是异步的。  
+我们推荐将结果作为结构体的字段值，但是某些时候我们依然想获得这个规则执行的结果。  
+比如，我们需要确认规则是否被执行了，因为规则可能是异步的。  
 所以 [outcome](/api/#outcome) 返回一个 `Promise`。
 
 ```ts
-// 在函数执行前，提前预定函数的结果
+// 在规则执行前，提前预定规则的结果
 const asyncResult = outcome(myself, 'generateIntroduction')
 myself.name = 'Amy'
 myself.sex = true
 await asyncResult // done
 ```
 
-大部分情况，我们更多需要获取的是结构体上的第一个函数结果。  
-所以，我们提供了一个简便的方式，无需函数名就能获得结果。
+大部分情况，我们更多需要获取的是结构体上的第一个规则执行的结果。  
+所以，我们提供了一个简便的方式，无需规则名就能获得结果。
 
 ```ts
 const asyncResult = outcome(myself)
@@ -635,9 +636,9 @@ console.log(node)
 // output: { next: undefined }
 ```
 
-## 在修饰结构体上定义函数
+## 在修饰结构体上定义规则
 
-我们除了可以直接在结构体上定义函数，也可以在修饰的结构体上定义函数。  
+我们除了可以直接在结构体上定义规则，也可以在修饰的结构体上定义规则。  
 这样我们就在不影响原结构体的情况下，赋予结构体更多的自动化能力。
 
 这符合修饰的准则。
@@ -650,16 +651,16 @@ console.log(node)
 也正好，这种方式赋予了我们组合多个结构体的能力。并能保持简单清晰，这很有好处。
 :::
 
-## 在实例上定义函数
+## 在实例上定义规则
 
-我们提出另一个值得思考的问题，如何在一个已经实例化的结构体上定义函数呢？  
+我们提出另一个值得思考的问题，如何在一个已经实例化的结构体上定义规则呢？  
 某些情况下，我们确实需要这种能力，来帮助我们扩展。
 
-假设可以在结构体实例上定义函数，那么会侵入影响这个实例，永远无法回到原始状态。  
+假设可以在结构体实例上定义规则，那么会侵入影响这个实例，永远无法回到原始状态。  
 所以，系统没有提供这种方法，就是为了保证实例的恒定稳定状态。  
 不过，我们有更好的方案。
 
-我们可以定义一个新的结构体，并将这个实例的类型定义为子结构体字段，这样就可以在这个新的结构体上定义函数了。
+我们可以定义一个新的结构体，并将这个实例的类型定义为子结构体字段，这样就可以在这个新的结构体上定义规则了。
 由于我们可以观察到子结构体的内部字段，所以我们就能在保证实例状态的前提下，非侵入式的实现扩展。
 
 ```ts
@@ -667,7 +668,7 @@ console.log(node)
 const TempStruct = typedef({
   ref: structof(myself), // 获取实例的类型
 })
-funcdef(
+ruledef(
   TempStruct,
   'tempFunc',
   {
@@ -843,7 +844,7 @@ const ReactiveStruct = typedef({
   arr: ReactiveArray,
   hash: int32,
 })
-funcdef(
+ruledef(
   ReactiveStruct,
   'hash',
   {
@@ -860,7 +861,7 @@ funcdef(
 const rs = typeinit(ReactiveStruct)
 const arr = rs.arr
 arr[0] = 0
-// 因为 arr 没有被重新赋值，所以函数不会执行
+// 因为 arr 没有被重新赋值，所以规则不会执行
 console.log(rs.hash) // output: 0
 
 // 手动说明 arr 的内部发生变化了

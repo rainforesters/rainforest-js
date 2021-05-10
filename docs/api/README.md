@@ -148,20 +148,20 @@ structof<
 
 **Returns:** structof&lt;T&gt;
 
-### funcdef
+### ruledef
 
-定义函数
+定义规则
 
 **Signature:**
 
 ```ts
-funcdef<
+ruledef<
   T extends TypeDesc<Struct<StructTypeDesc>>
 >(
   tdesc: T,
   name: unknown,
   observe: observe<T>,
-  func: (self: typeinit<T>) => unknown
+  executor: (self: typeinit<T>) => unknown
 ): void
 ```
 
@@ -170,9 +170,9 @@ funcdef<
 | Parameter | Type                                    | Description                              |
 | --------- | --------------------------------------- | ---------------------------------------- |
 | tdesc     | T                                       | 类型描述                                 |
-| name      | unknown                                 | 函数名                                   |
+| name      | unknown                                 | 规则名                                   |
 | observe   | observe&lt;T&gt;                        | 描述需要观察的字段规则                   |
-| func      | (self: typeinit&lt;T&gt;) =&gt; unknown | 当待观察的字段符合描述的规则时触发该函数 |
+| executor  | (self: typeinit&lt;T&gt;) =&gt; unknown | 当待观察的字段符合描述的规则时执行该规则 |
 
 **Returns:** void
 
@@ -186,7 +186,7 @@ const Person = typedef({
 })
 
 // 期望当名字、性别发生变化时，自动生成个人介绍
-funcdef(
+ruledef(
   Person,
   'generateIntroduction',
   {
@@ -202,14 +202,14 @@ const myself = typeinit(Person)
 myself.name = 'Amy'
 myself.sex = true
 // 此时，预期的名字、性别发生变化了，
-// 将会自动执行函数，生成个人介绍。
+// 将会自动执行规则，生成个人介绍。
 console.log(myself.intro)
 // output: My name is Amy, I am a girl.
 ```
 
 ### outcome
 
-获取预期函数结果
+获取预期规则执行的结果
 
 **Signature:**
 
@@ -225,7 +225,7 @@ outcome(
 | Parameter | Type                     | Description                            |
 | --------- | ------------------------ | -------------------------------------- |
 | struct    | Struct&lt;StructType&gt; | 结构体实例                             |
-| name      | unknown                  | 函数名，如果未指定则默认获取第一个函数 |
+| name      | unknown                  | 规则名，如果未指定则默认获取第一个规则 |
 
 **Returns:** Promise&lt;unknown&gt;
 
@@ -233,7 +233,7 @@ outcome(
 
 ```ts
 // 期望当名字、性别发生变化时，自动生成个人介绍
-funcdef(
+ruledef(
   Person,
   'generateIntroduction',
   {
@@ -253,7 +253,7 @@ const asyncResult = outcome(myself, 'generateIntroduction')
 myself.name = 'Amy'
 myself.sex = true
 // 此时，预期的名字、性别发生变化了，
-// 将会自动执行函数，生成个人介绍。
+// 将会自动执行规则，生成个人介绍。
 console.log(await asyncResult)
 // output: My name is Amy, I am a girl.
 ```
