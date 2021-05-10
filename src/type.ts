@@ -254,7 +254,7 @@ interface _TypeDesc_<T> {
 	/**
 	 * @internal
 	 */
-	[syl_observers]: Map<unknown, ObserveFieldNodeDesc> // 注册的函数集合
+	[syl_observers]: Map<unknown, ObserveFieldNodeDesc> // 定义的规则集合
 	/**
 	 * @internal
 	 */
@@ -463,7 +463,7 @@ function TypeDesc_prepare(
 			}
 			for (const [k, v] of self[syl_observers]) {
 				const node = ObserveNode_init(v)
-				node.func = v.func
+				node.executor = v.executor
 				node.virtual = virtual
 				node.running = false
 				map.set(k, node)
@@ -699,10 +699,8 @@ function TypeDesc_define(
 		if (!isString(name) || !RE_name.test(name)) {
 			throw Error('name is invalid')
 		}
-		tdesc = <TypeDesc<unknown>>(<unknown>new (defineClass(name, TypeDesc))())
-	} else {
-		tdesc = <TypeDesc<unknown>>new TypeDesc()
 	}
+	tdesc = <TypeDesc<unknown>>new TypeDesc()
 	tdesc[syl_kind] = tt ? Kind.decorate : Kind.struct
 	tdesc[syl_name] = name || ''
 	tdesc[syl_type] = null!
@@ -745,7 +743,7 @@ function TypeDesc_define(
 			}
 			tdesc[syl_class] = c
 		} else {
-			tdesc[syl_class] = name ? defineClass(name, Struct) : Struct
+			tdesc[syl_class] = Struct
 		}
 		if (TypeDesc_body(tdesc, desc)) {
 			TypeDesc_proto(tdesc)
@@ -754,17 +752,11 @@ function TypeDesc_define(
 	return Object.seal(tdesc)
 }
 
-function defineClass(name: string, type: Function): { new (): unknown } {
-	const c = new Function(`return function ${name}() {}`)()
-	c.prototype = type.prototype
-	return c
-}
-
 function primitiveDesc<T>(
 	name: string,
 	kind: Kind = Kind.primitive
 ): TypeDesc<T> {
-	const tdesc = <TypeDesc<T>>new (defineClass(name, TypeDesc))()
+	const tdesc = <TypeDesc<T>>new TypeDesc()
 	tdesc[syl_kind] = kind
 	tdesc[syl_name] = name
 	return Object.freeze(tdesc)
@@ -997,7 +989,7 @@ interface ObserveFieldNodeDesc {
 	diff: boolean
 	notnil: boolean
 	children?: ObserveFieldNodeDesc[]
-	func?: Function
+	executor?: Function
 }
 
 interface ObserveNode {
@@ -1011,10 +1003,10 @@ interface ObserveNode {
 	notnil: boolean // 字段值必须不为空
 	children?: ObserveNode[] // 只有 struct 才会具有子节点
 	parent?: ObserveNode
-	func?: Function // 待触发的函数（根节点）
+	executor?: Function // 待执行的规则（根节点）
 	virtual: VirtualValue // 此节点引用的 virtual value
-	running?: boolean // 函数触发时，标记运行状态，用来检测无限循环调用的错误
-	[syl_outcome]?: any[] // 用来获取函数结果（在函数执行前设置）
+	running?: boolean // 规则执行时，标记运行状态，用来检测无限循环调用的错误
+	[syl_outcome]?: any[] // 用来获取规则执行的结果（在规则执行前设置）
 }
 
 interface VirtualValue {
@@ -1105,7 +1097,7 @@ function ObserveNode_dispatch(self: ObserveNode) {
 		throw Error('infinite loop')
 	}
 	self.running = true
-	const ret = self.func!(self.virtual.value)
+	const ret = self.executor!(self.virtual.value)
 	const arr = self[syl_outcome]
 	if (arr) {
 		for (const v of arr) {
@@ -1308,12 +1300,12 @@ type observe<T> = T extends TypeDesc<infer U>
 	: never
 
 /**
- * 定义函数
+ * 定义规则
  *
- * @param tdesc   - 类型描述
- * @param name    - 函数名
- * @param observe - 描述需要观察的字段规则
- * @param func    - 当待观察的字段符合描述的规则时触发该函数
+ * @param tdesc    - 类型描述
+ * @param name     - 规则名
+ * @param observe  - 描述需要观察的字段规则
+ * @param executor - 当待观察的字段符合描述的规则时执行该规则
  *
  * @example
  * ```ts
@@ -1324,7 +1316,7 @@ type observe<T> = T extends TypeDesc<infer U>
  * })
  *
  * // 期望当名字、性别发生变化时，自动生成个人介绍
- * funcdef(
+ * ruledef(
  *   Person,
  *   'generateIntroduction',
  *   {
@@ -1340,18 +1332,18 @@ type observe<T> = T extends TypeDesc<infer U>
  * myself.name = 'Amy'
  * myself.sex = true
  * // 此时，预期的名字、性别发生变化了，
- * // 将会自动执行函数，生成个人介绍。
+ * // 将会自动执行规则，生成个人介绍。
  * console.log(myself.intro)
  * // output: My name is Amy, I am a girl.
  * ```
  *
  * @public
  */
-export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
+export function ruledef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 	tdesc: T,
 	name: unknown,
 	observe: observe<T>,
-	func: (self: typeinit<T>) => unknown
+	executor: (self: typeinit<T>) => unknown
 ): void {
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
@@ -1360,8 +1352,8 @@ export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 		throw TypeError('type is not struct')
 	}
 	TypeDesc_proto(tdesc)
-	if (!isFunc(func)) {
-		throw Error('func is invalid')
+	if (!isFunc(executor)) {
+		throw Error('executor is invalid')
 	}
 	if (!isObject(observe)) {
 		throw Error('observe is invalid')
@@ -1378,16 +1370,16 @@ export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 		tdesc[syl_observers] = new Map<unknown, ObserveFieldNodeDesc>()
 	}
 	if (tdesc[syl_observers].has(name)) {
-		throw Error(`func '${name}' has already been defined`)
+		throw Error(`rule '${name}' has already been defined`)
 	} else if (tdesc[syl_kind] === Kind.decorate) {
 		for (const v of tdesc[syl_type]) {
 			if (v[syl_observers]?.has(name)) {
-				throw Error(`func '${name}' has already been defined`)
+				throw Error(`rule '${name}' has already been defined`)
 			}
 		}
 	}
 	const fdesc = ObserveFieldNodeDesc_init(tdesc, observe, '')
-	fdesc.func = func
+	fdesc.executor = executor
 	if (!fdesc.children) {
 		throw Error('observe has no fields')
 	}
@@ -1395,16 +1387,16 @@ export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 }
 
 /**
- * 获取预期函数结果
+ * 获取预期规则执行的结果
  *
  * @param struct - 结构体实例
- * @param name   - 函数名，如果未指定则默认获取第一个函数
- * @returns 返回函数结果的 Promise
+ * @param name   - 规则名，如果未指定则默认获取第一个规则
+ * @returns 返回规则执行的结果 Promise
  *
  * @example
  * ```ts
  * // 期望当名字、性别发生变化时，自动生成个人介绍
- * funcdef(
+ * ruledef(
  *   Person,
  *   'generateIntroduction',
  *   {
@@ -1422,7 +1414,7 @@ export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(
  * myself.name = 'Amy'
  * myself.sex = true
  * // 此时，预期的名字、性别发生变化了，
- * // 将会自动执行函数，生成个人介绍。
+ * // 将会自动执行规则，生成个人介绍。
  * console.log(await asyncResult)
  * // output: My name is Amy, I am a girl.
  * ```
@@ -1440,7 +1432,7 @@ export function outcome(
 		? struct[syl_observers]?.get(name)
 		: struct[syl_observers]?.values().next().value
 	if (!node) {
-		throw Error(`func '${name}' is not defined`)
+		throw Error(`rule '${name}' is not defined`)
 	}
 	let arr: any = node[syl_outcome]
 	if (!arr) {

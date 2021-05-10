@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { funcdef, typedef, typeinit, bool } from './type'
+import { ruledef, typedef, typeinit, bool } from './type'
 
 import { CArray } from './collection'
 
@@ -15,9 +15,9 @@ describe('collection', () => {
 			arr: CArray,
 			out: bool,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				arr: true,
 			},

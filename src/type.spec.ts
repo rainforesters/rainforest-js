@@ -7,7 +7,7 @@
 
 import {
 	wrapval,
-	funcdef,
+	ruledef,
 	typedef,
 	typeinit,
 	structbody,
@@ -893,16 +893,16 @@ describe('type', () => {
 		}).toThrow()
 	})
 
-	test('define a function', () => {
+	test('define a rule', () => {
 		const tdesc = typedef({
 			arg1: int32,
 			arg2: int32,
 			arg3: int32,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				arg1: true,
 				arg2: true,
@@ -922,7 +922,7 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2-3')
 	})
 
-	test('define two functions', () => {
+	test('define two rules', () => {
 		const A = typedef({
 			arg1: int32,
 			arg2: int32,
@@ -933,9 +933,9 @@ describe('type', () => {
 			param3: string,
 			result: string,
 		})
-		funcdef(
+		ruledef(
 			A,
-			'func',
+			'rule',
 			{
 				arg1: true,
 				arg2: true,
@@ -947,9 +947,9 @@ describe('type', () => {
 		const tdesc = typedef({
 			'@type': A,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func2',
+			'rule2',
 			{
 				arg1: true,
 				arg2: true,
@@ -959,9 +959,9 @@ describe('type', () => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
-		funcdef(
+		ruledef(
 			tdesc,
-			'func3',
+			'rule3',
 			{
 				param1: true,
 				param2: true,
@@ -988,7 +988,7 @@ describe('type', () => {
 		expect(ret.result).toBe('a-b-c')
 	})
 
-	test('define a function on substructure', () => {
+	test('define a rule on substructure', () => {
 		const tdesc = typedef({
 			arg1: int32,
 			arg2: int32,
@@ -998,9 +998,9 @@ describe('type', () => {
 			}),
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				arg1: true,
 				arg2: true,
@@ -1025,15 +1025,15 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2 {a-b}')
 	})
 
-	test('the function is executed when the parameters are different', () => {
+	test('the rule is executed when the parameters are different', () => {
 		const tdesc = typedef({
 			arg1: int32,
 			arg2: int32,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				arg1: { '@diff': true },
 				arg2: { '@diff': true },
@@ -1059,16 +1059,16 @@ describe('type', () => {
 		expect(ret.out).toBe('10-20')
 	})
 
-	test('define a function use logical OR', () => {
+	test('define a rule use logical OR', () => {
 		const tdesc = typedef({
 			arg1: int32,
 			arg2: int32,
 			arg3: int32,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				'@or': true,
 				arg1: true,
@@ -1089,15 +1089,15 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2-3')
 	})
 
-	test('define a function on a decorated struct', () => {
+	test('define a rule on a decorated struct', () => {
 		const tdesc = typedef({
 			'@type': typedef({
 				input: string,
 			}),
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1105,17 +1105,17 @@ describe('type', () => {
 		)
 	})
 
-	test('define a function with unexpected arguments', () => {
+	test('define a rule with unexpected arguments', () => {
 		const tdesc = typedef({
 			input: string,
 		})
 		expect(() => {
-			funcdef(tdesc, 'func', null!, (self: typeinit<typeof tdesc>) => self)
+			ruledef(tdesc, 'rule', null!, (self: typeinit<typeof tdesc>) => self)
 		}).toThrow()
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				{
 					input: true,
 				},
@@ -1124,29 +1124,29 @@ describe('type', () => {
 		}).toThrow()
 
 		expect(() => {
-			funcdef(<any>1, '', null!, null!)
+			ruledef(<any>1, '', null!, null!)
 		}).toThrow()
 		expect(() => {
-			funcdef(unknown, '', null!, null!)
+			ruledef(unknown, '', null!, null!)
 		}).toThrow()
 	})
 
-	test('duplicate function', () => {
+	test('duplicate rule', () => {
 		const tdesc = typedef({
 			input: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
 			(self: typeinit<typeof tdesc>) => self
 		)
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				{
 					input: true,
 				},
@@ -1155,22 +1155,22 @@ describe('type', () => {
 		}).toThrow()
 	})
 
-	test('duplicate function on a decorated struct', () => {
+	test('duplicate rule on a decorated struct', () => {
 		const A = typedef({
 			input: string,
 		})
-		funcdef(
+		ruledef(
 			A,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
 			(self: typeinit<typeof A>) => self
 		)
 		expect(() => {
-			funcdef(
+			ruledef(
 				A,
-				'func',
+				'rule',
 				{
 					input: true,
 				},
@@ -1181,18 +1181,18 @@ describe('type', () => {
 		const B = typedef({
 			'@type': A,
 		})
-		funcdef(
+		ruledef(
 			B,
-			'func2',
+			'rule2',
 			{
 				input: true,
 			},
 			(self: typeinit<typeof B>) => self
 		)
 		expect(() => {
-			funcdef(
+			ruledef(
 				B,
-				'func2',
+				'rule2',
 				{
 					input: true,
 				},
@@ -1200,9 +1200,9 @@ describe('type', () => {
 			)
 		}).toThrow()
 		expect(() => {
-			funcdef(
+			ruledef(
 				B,
-				'func',
+				'rule',
 				{
 					input: true,
 				},
@@ -1211,13 +1211,13 @@ describe('type', () => {
 		}).toThrow()
 	})
 
-	test('function must have a name', () => {
+	test('rule must have a name', () => {
 		const tdesc = typedef({
 			input: string,
 		})
 		;['', false, true, 0, 1, null, void 0, wrapval({})].forEach((v: any) => {
 			expect(() => {
-				funcdef(
+				ruledef(
 					tdesc,
 					v,
 					{
@@ -1227,11 +1227,11 @@ describe('type', () => {
 				)
 			}).toThrow()
 		})
-		funcdef(
+		ruledef(
 			tdesc,
 			'',
 			{
-				'@name': 'func',
+				'@name': 'rule',
 				input: true,
 			},
 			(self: typeinit<typeof tdesc>) => self
@@ -1244,14 +1244,14 @@ describe('type', () => {
 			out: string,
 		})
 		expect(() => {
-			funcdef(tdesc, 'func', {}, (self: typeinit<typeof tdesc>) => {
+			ruledef(tdesc, 'rule', {}, (self: typeinit<typeof tdesc>) => {
 				self.out = self.input
 			})
 		}).toThrow()
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				{
 					'@or': true,
 				},
@@ -1261,9 +1261,9 @@ describe('type', () => {
 			)
 		}).toThrow()
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				<any>{
 					'@or': true,
 					'@diff': true,
@@ -1275,9 +1275,9 @@ describe('type', () => {
 			)
 		}).toThrow()
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				<any>{
 					'@diff': true,
 					'@notnil': true,
@@ -1295,9 +1295,9 @@ describe('type', () => {
 			out: int32,
 			result: int32,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1305,9 +1305,9 @@ describe('type', () => {
 				self.out = self.input * 2
 			}
 		)
-		funcdef(
+		ruledef(
 			tdesc,
-			'func2',
+			'rule2',
 			{
 				input: true,
 			},
@@ -1335,9 +1335,9 @@ describe('type', () => {
 			sub: Sub,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			A,
-			'func',
+			'rule',
 			{
 				name: true,
 				sub: {
@@ -1354,9 +1354,9 @@ describe('type', () => {
 			sub: Sub,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			B,
-			'func',
+			'rule',
 			{
 				name: true,
 				sub: {
@@ -1405,17 +1405,17 @@ describe('type', () => {
 			sub: Sub,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				sub: true,
 			},
 			(self: typeinit<typeof tdesc>) => self
 		)
-		funcdef(
+		ruledef(
 			tdesc,
-			'func2',
+			'rule2',
 			{
 				name: true,
 				sub: {
@@ -1431,9 +1431,9 @@ describe('type', () => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
-		funcdef(
+		ruledef(
 			tdesc,
-			'func3',
+			'rule3',
 			{
 				sub: {
 					arg1: true,
@@ -1465,9 +1465,9 @@ describe('type', () => {
 			sub: Sub,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				name: true,
 				sub: {
@@ -1499,9 +1499,9 @@ describe('type', () => {
 			input: unknown,
 			out: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				name: true,
 				input: { '@notnil': true },
@@ -1529,9 +1529,9 @@ describe('type', () => {
 			input: int32,
 		})
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				<any>{
 					test: true,
 				},
@@ -1545,9 +1545,9 @@ describe('type', () => {
 			input: int32,
 		})
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				{
 					input: {},
 				},
@@ -1568,9 +1568,9 @@ describe('type', () => {
 			...body,
 		})
 		expect(() => {
-			funcdef(
+			ruledef(
 				tdesc,
-				'func',
+				'rule',
 				{
 					...observe,
 				},
@@ -1590,9 +1590,9 @@ describe('type', () => {
 			a: A,
 			output: string,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				a: {
 					'@notnil': true,
@@ -1634,9 +1634,9 @@ describe('type', () => {
 		const tdesc = typedef({
 			input: int32,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1650,13 +1650,13 @@ describe('type', () => {
 		ret.input = 1
 	})
 
-	test('get function result by name', async () => {
+	test('get rule result by name', async () => {
 		const tdesc = typedef({
 			input: int32,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1665,19 +1665,19 @@ describe('type', () => {
 			}
 		)
 		const ret = typeinit(tdesc)
-		const out = outcome(ret, 'func')
+		const out = outcome(ret, 'rule')
 		expect(out).toBeInstanceOf(Promise)
 		ret.input = 2
 		expect(await out).toBe(4)
 	})
 
-	test('get the result of the first defined function', async () => {
+	test('get the result of the first defined rule', async () => {
 		const tdesc = typedef({
 			input: int32,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1685,9 +1685,9 @@ describe('type', () => {
 				return self.input * 2
 			}
 		)
-		funcdef(
+		ruledef(
 			tdesc,
-			'func2',
+			'rule2',
 			{
 				input: true,
 			},
@@ -1697,7 +1697,7 @@ describe('type', () => {
 		)
 		const ret = typeinit(tdesc)
 		const out = outcome(ret)
-		const out2 = outcome(ret, 'func2')
+		const out2 = outcome(ret, 'rule2')
 		expect(out).toBeInstanceOf(Promise)
 		expect(out2).toBeInstanceOf(Promise)
 		ret.input = 2
@@ -1705,13 +1705,13 @@ describe('type', () => {
 		expect(await out2).toBe(8)
 	})
 
-	test('get async function result', async () => {
+	test('get async rule result', async () => {
 		const tdesc = typedef({
 			input: int32,
 		})
-		funcdef(
+		ruledef(
 			tdesc,
-			'func',
+			'rule',
 			{
 				input: true,
 			},
@@ -1733,13 +1733,13 @@ describe('type', () => {
 		expect(await out2).toBe(4)
 	})
 
-	test('get the result of the undefined function', () => {
+	test('get the result of the undefined rule', () => {
 		const tdesc = typedef({
 			input: int32,
 		})
 		const ret = typeinit(tdesc)
 		expect(() => {
-			outcome(ret, 'func')
+			outcome(ret, 'rule')
 		}).toThrow()
 		expect(() => {
 			outcome(ret)
@@ -1975,9 +1975,9 @@ describe('type', () => {
 			b: B,
 			out: bool,
 		})
-		funcdef(
+		ruledef(
 			C,
-			'func',
+			'rule',
 			{
 				b: {
 					'@notnil': true,

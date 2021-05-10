@@ -25,12 +25,6 @@ export type float64 = number | (1 & never[]);
 // @public (undocumented)
 export const float64: TypeDesc<float64>;
 
-// Warning: (ae-forgotten-export) The symbol "StructTypeDesc" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "observe" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function funcdef<T extends TypeDesc<Struct<StructTypeDesc>>>(tdesc: T, name: unknown, observe: observe<T>, func: (self: typeinit<T>) => unknown): void;
-
 // @public (undocumented)
 export type int32 = number | (0 & never[]);
 
@@ -44,6 +38,12 @@ export const object: TypeDesc<Record<string, unknown>>;
 //
 // @public
 export function outcome(struct: Struct<StructType>, name?: unknown): Promise<unknown>;
+
+// Warning: (ae-forgotten-export) The symbol "StructTypeDesc" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "observe" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function ruledef<T extends TypeDesc<Struct<StructTypeDesc>>>(tdesc: T, name: unknown, observe: observe<T>, executor: (self: typeinit<T>) => unknown): void;
 
 // @public (undocumented)
 export const string: TypeDesc<string>;
