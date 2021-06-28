@@ -1424,10 +1424,6 @@ describe('type', () => {
 				},
 			},
 			(self: typeinit<typeof tdesc>) => {
-				if (!self.sub) {
-					self.out = `${self.name} {}`
-					return
-				}
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1448,10 +1444,10 @@ describe('type', () => {
 		expect(ret.out).toBe('a {0-0}')
 		ret.sub = null!
 		ret.name = 'A'
-		expect(ret.out).toBe('A {}')
+		expect(ret.out).toBe('a {0-0}')
 		sub.arg1 = 1
 		sub.arg2 = 2
-		expect(ret.out).toBe('A {}')
+		expect(ret.out).toBe('a {0-0}')
 	})
 
 	test('the observer does not observe that the substructure is nil', () => {
@@ -1471,7 +1467,6 @@ describe('type', () => {
 			{
 				name: true,
 				sub: {
-					'@notnil': true,
 					arg1: true,
 					arg2: true,
 				},
@@ -1595,9 +1590,7 @@ describe('type', () => {
 			'rule',
 			{
 				a: {
-					'@notnil': true,
 					sub: {
-						'@notnil': true,
 						input: { '@notnil': true },
 						arg: { '@notnil': true },
 					},
@@ -1980,7 +1973,6 @@ describe('type', () => {
 			'rule',
 			{
 				b: {
-					'@notnil': true,
 					a: true,
 				},
 			},

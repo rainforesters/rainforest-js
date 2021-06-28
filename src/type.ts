@@ -1072,12 +1072,13 @@ function VirtualValue_set(
 	for (const n of observers) {
 		if (!n.diff || diff) {
 			if (!n.notnil || notnil) {
-				if (n.children && notnil) {
-					if (!ObserveNode_check(n, notnil)) {
-						continue
+				if (n.children) {
+					if (notnil && ObserveNode_check(n, notnil)) {
+						ObserveNode_dispatch(n)
 					}
+				} else {
+					ObserveNode_dispatch(n)
 				}
-				ObserveNode_dispatch(n)
 			}
 		}
 	}
@@ -1094,6 +1095,7 @@ function ObserveNode_dispatch(self: ObserveNode) {
 		return
 	}
 	if (self.running) {
+		self.running = false
 		throw Error('infinite loop')
 	}
 	self.running = true
@@ -1110,16 +1112,18 @@ function ObserveNode_dispatch(self: ObserveNode) {
 
 function ObserveNode_check(self: ObserveNode, notnil: boolean) {
 	const { children } = self
-	if (children && notnil) {
-		let bitmap = 0
-		const { test, or } = self
-		for (const n of children) {
-			if (!ObserveNode_check(n, isNotnil(n.virtual.value))) {
-				return false
-			}
-			bitmap |= 1 << n.bit
-			if (bitmap === test || or) {
-				return true
+	if (children) {
+		if (notnil) {
+			let bitmap = 0
+			const { test, or } = self
+			for (const n of children) {
+				if (!ObserveNode_check(n, isNotnil(n.virtual.value))) {
+					return false
+				}
+				bitmap |= 1 << n.bit
+				if (bitmap === test || or) {
+					return true
+				}
 			}
 		}
 	} else if (!self.notnil || notnil) {
