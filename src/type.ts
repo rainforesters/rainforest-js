@@ -1460,7 +1460,9 @@ export function change(obj: Record<any, any>): void {
 	if (set) {
 		for (const v of set) {
 			for (const n of v.observers) {
-				ObserveNode_dispatch(n)
+				if (!n.diff) {
+					ObserveNode_dispatch(n)
+				}
 			}
 		}
 	}

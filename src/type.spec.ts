@@ -2000,10 +2000,47 @@ describe('type', () => {
 		expect(c.out).toBe(false)
 		c.b = b
 		expect(c.out).toBe(true)
+		b.a = a
+		expect(c.out).toBe(false)
+		change(a)
+		expect(c.out).toBe(true)
 
 		typeinit(C).b.a = a
 
 		typeinit(B).a = null!
+
+		const D = typedef({
+			a: A,
+			out: bool,
+		})
+		ruledef(
+			D,
+			'rule',
+			{
+				a: {
+					'@diff': true,
+				},
+			},
+			(self: typeinit<typeof D>) => {
+				self.out = !self.out
+			}
+		)
+		const d = typeinit(D)
+		expect(d.out).toBe(false)
+		d.a = a
+		expect(d.out).toBe(true)
+		d.a = a
+		expect(d.out).toBe(true)
+		change(a)
+		expect(c.out).toBe(false)
+		expect(d.out).toBe(true)
+		change(a)
+		expect(c.out).toBe(true)
+		expect(d.out).toBe(true)
+		d.a = 0
+		expect(d.out).toBe(false)
+		d.a = 0
+		expect(d.out).toBe(false)
 	})
 
 	describe('wrapval', () => {
