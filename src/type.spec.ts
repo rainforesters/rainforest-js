@@ -2002,6 +2002,8 @@ describe('type', () => {
 		expect(c.out).toBe(true)
 
 		typeinit(C).b.a = a
+
+		typeinit(B).a = null!
 	})
 
 	describe('wrapval', () => {

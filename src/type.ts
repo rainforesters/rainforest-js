@@ -1052,7 +1052,7 @@ function VirtualValue_set(
 			// 表示该类型可能会手动触发观察者
 			if (isObject(oldVal)) {
 				// 移除旧值的变更元素
-				changeMap.get(oldVal)!.delete(self)
+				changeMap.get(oldVal)?.delete(self)
 			}
 			if (isObject(val)) {
 				// 为新值注册变更元素
