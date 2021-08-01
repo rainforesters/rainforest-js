@@ -1,5 +1,5 @@
 module.exports = {
-	'*.{js,ts}': ['prettier --write --use-tabs', 'eslint'],
+	'*.{js,ts}': ['prettier --write', 'eslint'],
 	'*.{json,yml}': 'prettier --write',
 	'!(*.api).md': 'prettier --write',
 }
