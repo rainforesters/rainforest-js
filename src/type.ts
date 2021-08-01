@@ -128,7 +128,7 @@ export function wrapval<T>(
 	val?: T
 ): Readonly<T> {
 	if (!isObject(desc)) {
-		throw TypeError('description is invalid')
+		throw Error('description is invalid')
 	}
 	if (isWrapValue(val)) {
 		throw Error('cannot wrap the already wrapped value')
@@ -335,7 +335,7 @@ function TypeDesc_check(
 		case Kind.struct:
 			if (isNotnil(val)) {
 				if (!isStruct(val)) {
-					throw TypeError('expected struct')
+					throw TypeError(`expected struct, but got ${val}`)
 				}
 				if (!val[syl_init][syl_accept].has(accepted)) {
 					if (val[syl_type] !== self) {
@@ -387,22 +387,22 @@ function TypeDesc_check(
 			switch (self) {
 				case int32:
 					if (t !== 'number' || val !== ((<int32>val) | 0)) {
-						throw TypeError('expected int32')
+						throw TypeError(`expected int32, but got ${val}`)
 					}
 					break
 				case float64:
 					if (t !== 'number') {
-						throw TypeError('expected float64')
+						throw TypeError(`expected float64, but got ${val}`)
 					}
 					break
 				case string:
 					if (t !== 'string') {
-						throw TypeError('expected string')
+						throw TypeError(`expected string, but got ${val}`)
 					}
 					break
 				case bool:
 					if (t !== 'boolean') {
-						throw TypeError('expected bool')
+						throw TypeError(`expected bool, but got ${val}`)
 					}
 					break
 			}
@@ -514,7 +514,7 @@ function TypeDesc_init(
 			}
 			if (void 0 !== literal) {
 				if (!isObject(literal)) {
-					throw Error('expected struct')
+					throw TypeError(`expected struct, but got ${literal}`)
 				}
 				isLiteral = false
 			}
@@ -677,7 +677,7 @@ function TypeDesc_define(
 	tdesc?: TypeDesc<unknown>
 ) {
 	if (!isObject(desc)) {
-		throw Error('desc is invalid')
+		throw Error('description is invalid')
 	}
 	if (tdesc) {
 		// 此处适用于: 先声明，后定义
