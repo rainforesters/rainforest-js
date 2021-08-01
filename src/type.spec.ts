@@ -1622,10 +1622,14 @@ describe('type', () => {
 		expect(ret.output).toBe('test')
 	})
 
-	test('infinite loop', () => {
-		expect.assertions(1)
+	test('the last rule is not over yet', () => {
+		expect.assertions(2)
+		const Sub = typedef({
+			input: int32,
+		})
 		const tdesc = typedef({
 			input: int32,
+			sub: Sub,
 		})
 		ruledef(
 			tdesc,
@@ -1639,8 +1643,23 @@ describe('type', () => {
 				}).toThrow()
 			}
 		)
+		ruledef(
+			tdesc,
+			'rule2',
+			{
+				sub: {
+					input: true,
+				},
+			},
+			(self: typeinit<typeof tdesc>) => {
+				expect(() => {
+					self.sub = typeinit(Sub)
+				}).toThrow()
+			}
+		)
 		const ret = typeinit(tdesc)
 		ret.input = 1
+		ret.sub.input = 1
 	})
 
 	test('get rule result by name', async () => {

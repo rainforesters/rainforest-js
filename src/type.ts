@@ -458,6 +458,7 @@ function TypeDesc_prepare(
 					observers: new Set<ObserveNode>(),
 					type: null!,
 					dist: 0,
+					running: false,
 				}
 				map = hideProp(struct, syl_observers, new Map<string, ObserveNode>())
 			}
@@ -569,6 +570,7 @@ function TypeDesc_init(
 					observers: new Set<ObserveNode>(),
 					type: t,
 					dist: 0,
+					running: false,
 				})
 				if (t[syl_retain] && isNotnil(v)) {
 					t[syl_retain](v, ret, k)
@@ -645,7 +647,6 @@ function TypeDesc_proto(self: TypeDesc<unknown>): ProtoDesc {
 	if (!index) {
 		throw Error('empty struct is invalid')
 	}
-	Object.defineProperties(proto, descs)
 	Object.setPrototypeOf(proto, self[syl_class].prototype)
 	Object.freeze(proto)
 	return proto
@@ -1015,6 +1016,7 @@ interface VirtualValue {
 	observers: Set<ObserveNode> // 附加的观察节点
 	type: TypeDesc<unknown>
 	dist: number // 可以向下分发的计数
+	running: boolean // 标记状态，用于禁止递归赋值
 }
 
 function VirtualValue_set(
@@ -1022,6 +1024,9 @@ function VirtualValue_set(
 	val: unknown,
 	struct: Struct<StructType>
 ) {
+	if (self.running) {
+		throw Error('the last rule is not over yet')
+	}
 	const { type: tdesc, value: oldVal, observers } = self
 	if (isWrapValue(val)) {
 		val = (<WrapValue>val)[syl_value]
@@ -1031,6 +1036,7 @@ function VirtualValue_set(
 		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust)
 		diff = oldVal !== val
 	}
+	self.running = true
 	const notnil = isNotnil(val)
 	if (diff) {
 		const { name, dist } = self
@@ -1082,6 +1088,7 @@ function VirtualValue_set(
 			}
 		}
 	}
+	self.running = false
 }
 
 function ObserveNode_dispatch(self: ObserveNode) {
@@ -1095,8 +1102,7 @@ function ObserveNode_dispatch(self: ObserveNode) {
 		return
 	}
 	if (self.running) {
-		self.running = false
-		throw Error('infinite loop')
+		throw Error('the last rule is not over yet')
 	}
 	self.running = true
 	const ret = self.executor!(self.virtual.value)
