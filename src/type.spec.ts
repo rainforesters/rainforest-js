@@ -648,6 +648,47 @@ describe('type', () => {
 		}).toThrow()
 	})
 
+	test('verify the decorated type', () => {
+		expect(() => {
+			typeinit(
+				typedef({
+					'@type': unknown,
+					'@notnil': true,
+				})
+			)
+		}).toThrow()
+		expect(() => {
+			typeinit(
+				typedef({
+					'@type': unknown,
+					'@notnil': true,
+					'@value': (val: unknown) => val,
+				})
+			)
+		}).toThrow()
+		expect(() => {
+			typeinit(
+				typedef({
+					'@type': unknown,
+					'@verify': (val: unknown) => {
+						if (!val) {
+							throw Error('must not be nil')
+						}
+					},
+					'@value': (val: unknown) => val,
+				})
+			)
+		}).toThrow()
+		expect(
+			typeinit(
+				typedef({
+					'@type': unknown,
+					'@value': (val: unknown) => val,
+				})
+			)
+		).toBeUndefined()
+	})
+
 	test('adjust bool', () => {
 		const tdesc = typedef({
 			value: typedef({

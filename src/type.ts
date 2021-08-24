@@ -422,6 +422,9 @@ function TypeDesc_check2(
 	const newVal = self[syl](val)
 	if (val !== newVal || isObject(newVal)) {
 		val = TypeDesc_check(self, accepted, newVal, flag)
+	} else if (flag) {
+		// 即使与原值相同，也要对修饰的类型描述自身进行校验，防止绕过校验
+		val = TypeDesc_check(self, accepted, newVal, flag | Flag.self)
 	}
 	return val
 }
