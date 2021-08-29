@@ -6,10 +6,11 @@ module.exports = {
 		repo: 'rainforesters/rainforest-js',
 		docsDir: 'docs',
 		docsBranch: 'docs',
+		contributors: false,
 		editLinks: true,
 		editLinkText: '参与编辑文档🌲',
-		lastUpdated: '上次更新',
-		nav: [
+		lastUpdatedText: '上次更新',
+		navbar: [
 			{
 				text: '教程',
 				link: '/guide/',
@@ -22,10 +23,10 @@ module.exports = {
 		sidebar: {
 			'/guide/': [
 				{
-					title: '教程',
+					text: '教程',
 					collapsable: false,
 					children: [
-						'',
+						'README.md',
 						'getting-started',
 						'typedesc',
 						'descriptors',
@@ -33,7 +34,18 @@ module.exports = {
 					],
 				},
 			],
-			'/api/': 'auto',
 		},
 	},
+	plugins: [
+		[
+			'@vuepress/plugin-search',
+			{
+				locales: {
+					'/': {
+						placeholder: 'Search',
+					},
+				},
+			},
+		],
+	],
 }

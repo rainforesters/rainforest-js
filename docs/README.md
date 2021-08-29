@@ -2,8 +2,9 @@
 home: true
 heroText: rainforest-js
 tagline: 数据结构化编程之类型描述系统
-actionText: 快速开始 →
-actionLink: /guide/
+actions:
+  - text: 快速开始 →
+    link: /guide/
 features:
   - title: 结构
     details: |

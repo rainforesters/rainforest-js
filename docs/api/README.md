@@ -1,5 +1,7 @@
 ---
 title: API
+sidebar: auto
+sidebarDepth: 2
 ---
 
 ## 函数
@@ -12,9 +14,9 @@ title: API
 
 ```ts
 typedef<
-  T extends Desc<T>
+  T
 >(
-  desc: T,
+  desc: Desc<T>,
   tdesc?: _typedef_<T>
 ): _typedef_<T>
 ```

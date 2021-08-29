@@ -670,10 +670,9 @@ const TempStruct = typedef({
 })
 ruledef(
   TempStruct,
-  'tempFunc',
+  'tempRule',
   {
     ref: {
-      '@notnil': true,
       name: true,
       sex: true,
     },
