@@ -70,7 +70,7 @@ export type structof<T extends Struct<StructType>> = T extends Struct<infer U> ?
 // Warning: (ae-forgotten-export) The symbol "_typedef_" needs to be exported by the entry point index.d.ts
 //
 // @public
-export function typedef<T extends Desc<T>>(desc: T, tdesc?: _typedef_<T>): _typedef_<T>;
+export function typedef<T>(desc: Desc<T>, tdesc?: _typedef_<T>): _typedef_<T>;
 
 // Warning: (ae-forgotten-export) The symbol "_TypeDesc_" needs to be exported by the entry point index.d.ts
 //
@@ -94,7 +94,6 @@ export const unknown: TypeDesc<unknown>;
 
 // @public
 export function wrapval<T>(desc: Record<string, unknown>, val?: T): Readonly<T>;
-
 
 // (No @packageDocumentation comment for this package)
 

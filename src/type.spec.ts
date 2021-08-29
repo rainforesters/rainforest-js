@@ -302,7 +302,7 @@ describe('type', () => {
 
 	test('initialize struct', () => {
 		const tdesc = typedef({
-			'@verify': (self: any) => self,
+			'@verify': (self) => self,
 			name: string,
 			sex: bool,
 			age: int32,
@@ -574,7 +574,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': bool,
-				'@verify': (self: boolean) => {
+				'@verify': (self) => {
 					if (self) {
 						throw Error('the value must be false')
 					}
@@ -593,7 +593,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': int32,
-				'@verify': (self: number) => {
+				'@verify': (self) => {
 					if (self >= 3) {
 						throw Error('the value must be less than 3')
 					}
@@ -614,7 +614,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': float64,
-				'@verify': (self: number) => {
+				'@verify': (self) => {
 					if (self >= 1) {
 						throw Error('the value must be less than 1')
 					}
@@ -633,7 +633,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': string,
-				'@verify': (self: string) => {
+				'@verify': (self) => {
 					if (self === 'test') {
 						throw Error('the value must not be test')
 					}
@@ -662,7 +662,7 @@ describe('type', () => {
 				typedef({
 					'@type': unknown,
 					'@notnil': true,
-					'@value': (val: unknown) => val,
+					'@value': (self) => self,
 				})
 			)
 		}).toThrow()
@@ -670,12 +670,12 @@ describe('type', () => {
 			typeinit(
 				typedef({
 					'@type': unknown,
-					'@verify': (val: unknown) => {
-						if (!val) {
+					'@verify': (self) => {
+						if (!self) {
 							throw Error('must not be nil')
 						}
 					},
-					'@value': (val: unknown) => val,
+					'@value': (self) => self,
 				})
 			)
 		}).toThrow()
@@ -683,7 +683,7 @@ describe('type', () => {
 			typeinit(
 				typedef({
 					'@type': unknown,
-					'@value': (val: unknown) => val,
+					'@value': (self) => self,
 				})
 			)
 		).toBeUndefined()
@@ -693,7 +693,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': bool,
-				'@adjust': (self: boolean) => {
+				'@adjust': (self) => {
 					return !self
 				},
 			}),
@@ -712,7 +712,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': int32,
-				'@adjust': (self: number) => {
+				'@adjust': (self) => {
 					return self * 2
 				},
 			}),
@@ -729,7 +729,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': float64,
-				'@adjust': (self: number) => {
+				'@adjust': (self) => {
 					return self * 2
 				},
 			}),
@@ -746,7 +746,7 @@ describe('type', () => {
 		const tdesc = typedef({
 			value: typedef({
 				'@type': string,
-				'@adjust': (self: string) => {
+				'@adjust': (self) => {
 					return self || 'adjust'
 				},
 			}),
@@ -762,7 +762,7 @@ describe('type', () => {
 	test('adjust struct', () => {
 		const tdesc = typedef({
 			value: typedef({
-				'@adjust': (self: any) => {
+				'@adjust': (self) => {
 					if (!self.name) {
 						self.name = 'adjust'
 					}
@@ -784,7 +784,7 @@ describe('type', () => {
 	test('lifecycle init', () => {
 		expect.assertions(3)
 		const tdesc = typedef({
-			'@init': (self: any) => {
+			'@init': (self) => {
 				expect(self.name).toBe('')
 				self.name = 'init'
 			},
@@ -798,7 +798,7 @@ describe('type', () => {
 
 	test('retain reference', () => {
 		const Ref = typedef({
-			'@retain': (self: any) => {
+			'@retain': (self) => {
 				self.count++
 			},
 			count: int32,
@@ -817,10 +817,10 @@ describe('type', () => {
 
 	test('release reference', () => {
 		const Ref = typedef({
-			'@retain': (self: any) => {
+			'@retain': (self) => {
 				self.count++
 			},
-			'@release': (self: any) => {
+			'@release': (self) => {
 				self.count--
 			},
 			count: int32,
@@ -949,7 +949,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -982,7 +982,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: typeinit<typeof A>) => self
+			(self) => self
 		)
 
 		const tdesc = typedef({
@@ -996,7 +996,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -1008,7 +1008,7 @@ describe('type', () => {
 				param2: true,
 				param3: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.result = `${self.param1}-${self.param2}-${self.param3}`
 			}
 		)
@@ -1050,7 +1050,7 @@ describe('type', () => {
 					param2: true,
 				},
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.arg1}-${self.arg2} {${self.sub.param1}-${self.sub.param2}}`
 			}
 		)
@@ -1079,7 +1079,7 @@ describe('type', () => {
 				arg1: { '@diff': true },
 				arg2: { '@diff': true },
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.arg1}-${self.arg2}`
 			}
 		)
@@ -1116,7 +1116,7 @@ describe('type', () => {
 				arg2: true,
 				arg3: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.arg1}-${self.arg2}-${self.arg3}`
 			}
 		)
@@ -1142,7 +1142,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => self
+			(self) => self
 		)
 	})
 
@@ -1151,7 +1151,7 @@ describe('type', () => {
 			input: string,
 		})
 		expect(() => {
-			ruledef(tdesc, 'rule', null!, (self: typeinit<typeof tdesc>) => self)
+			ruledef(tdesc, 'rule', null!, (self) => self)
 		}).toThrow()
 		expect(() => {
 			ruledef(
@@ -1182,7 +1182,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => self
+			(self) => self
 		)
 		expect(() => {
 			ruledef(
@@ -1191,7 +1191,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: typeinit<typeof tdesc>) => self
+				(self) => self
 			)
 		}).toThrow()
 	})
@@ -1206,7 +1206,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof A>) => self
+			(self) => self
 		)
 		expect(() => {
 			ruledef(
@@ -1215,7 +1215,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: typeinit<typeof A>) => self
+				(self) => self
 			)
 		}).toThrow()
 
@@ -1228,7 +1228,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof B>) => self
+			(self) => self
 		)
 		expect(() => {
 			ruledef(
@@ -1237,7 +1237,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: typeinit<typeof B>) => self
+				(self) => self
 			)
 		}).toThrow()
 		expect(() => {
@@ -1247,7 +1247,7 @@ describe('type', () => {
 				{
 					input: true,
 				},
-				(self: typeinit<typeof B>) => self
+				(self) => self
 			)
 		}).toThrow()
 	})
@@ -1264,7 +1264,7 @@ describe('type', () => {
 					{
 						input: true,
 					},
-					(self: typeinit<typeof tdesc>) => self
+					(self) => self
 				)
 			}).toThrow()
 		})
@@ -1275,7 +1275,7 @@ describe('type', () => {
 				'@name': 'rule',
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => self
+			(self) => self
 		)
 	})
 
@@ -1285,7 +1285,7 @@ describe('type', () => {
 			out: string,
 		})
 		expect(() => {
-			ruledef(tdesc, 'rule', {}, (self: typeinit<typeof tdesc>) => {
+			ruledef(tdesc, 'rule', {}, (self) => {
 				self.out = self.input
 			})
 		}).toThrow()
@@ -1296,7 +1296,7 @@ describe('type', () => {
 				{
 					'@or': true,
 				},
-				(self: typeinit<typeof tdesc>) => {
+				(self) => {
 					self.out = self.input
 				}
 			)
@@ -1310,7 +1310,7 @@ describe('type', () => {
 					'@diff': true,
 					'@notnil': true,
 				},
-				(self: typeinit<typeof tdesc>) => {
+				(self) => {
 					self.out = self.input
 				}
 			)
@@ -1323,7 +1323,7 @@ describe('type', () => {
 					'@diff': true,
 					'@notnil': true,
 				},
-				(self: typeinit<typeof tdesc>) => {
+				(self) => {
 					self.out = self.input
 				}
 			)
@@ -1342,7 +1342,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = self.input * 2
 			}
 		)
@@ -1352,7 +1352,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.result = self.input * 4
 			}
 		)
@@ -1386,7 +1386,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: typeinit<typeof A>) => {
+			(self) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1405,7 +1405,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: typeinit<typeof B>) => {
+			(self) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1452,7 +1452,7 @@ describe('type', () => {
 			{
 				sub: true,
 			},
-			(self: typeinit<typeof tdesc>) => self
+			(self) => self
 		)
 		ruledef(
 			tdesc,
@@ -1464,7 +1464,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1476,7 +1476,7 @@ describe('type', () => {
 					arg1: true,
 				},
 			},
-			(self: typeinit<typeof tdesc>) => self
+			(self) => self
 		)
 		const sub = typeinit(Sub)
 		const ret = typeinit(tdesc)
@@ -1512,7 +1512,7 @@ describe('type', () => {
 					arg2: true,
 				},
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.name} {${self.sub.arg1}-${self.sub.arg2}}`
 			}
 		)
@@ -1542,7 +1542,7 @@ describe('type', () => {
 				name: true,
 				input: { '@notnil': true },
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.out = `${self.name} ${self.input}`
 			}
 		)
@@ -1571,7 +1571,7 @@ describe('type', () => {
 				<any>{
 					test: true,
 				},
-				(self: typeinit<typeof tdesc>) => self
+				(self) => self
 			)
 		}).toThrow()
 	})
@@ -1587,7 +1587,7 @@ describe('type', () => {
 				{
 					input: {},
 				},
-				(self: typeinit<typeof tdesc>) => self
+				(self) => self
 			)
 		}).toThrow()
 	})
@@ -1610,7 +1610,7 @@ describe('type', () => {
 				{
 					...observe,
 				},
-				(self: typeinit<typeof tdesc>) => self
+				(self) => self
 			)
 		}).toThrow()
 	})
@@ -1637,7 +1637,7 @@ describe('type', () => {
 					},
 				},
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				self.output = self.a.sub.input
 			}
 		)
@@ -1678,7 +1678,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				expect(() => {
 					self.input = 1
 				}).toThrow()
@@ -1692,7 +1692,7 @@ describe('type', () => {
 					input: true,
 				},
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				expect(() => {
 					self.sub = typeinit(Sub)
 				}).toThrow()
@@ -1713,7 +1713,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				return self.input * 2
 			}
 		)
@@ -1734,7 +1734,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				return self.input * 2
 			}
 		)
@@ -1744,7 +1744,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			(self: typeinit<typeof tdesc>) => {
+			(self) => {
 				return self.input * 4
 			}
 		)
@@ -1768,7 +1768,7 @@ describe('type', () => {
 			{
 				input: true,
 			},
-			async (self: typeinit<typeof tdesc>) => {
+			async (self) => {
 				return new Promise((resolve) => {
 					setTimeout(() => {
 						resolve(self.input * 2)
@@ -2036,7 +2036,7 @@ describe('type', () => {
 					a: true,
 				},
 			},
-			(self: typeinit<typeof C>) => {
+			(self) => {
 				self.out = !self.out
 			}
 		)
@@ -2081,7 +2081,7 @@ describe('type', () => {
 					'@diff': true,
 				},
 			},
-			(self: typeinit<typeof D>) => {
+			(self) => {
 				self.out = !self.out
 			}
 		)

@@ -162,25 +162,27 @@ type Desc<T> =
 	| {
 			[K in keyof T]: K extends keyof DescType<T>
 				? DescType<T>[K]
+				: T[K] extends TypeDesc<unknown>
+				? T[K]
 				: TypeDesc<unknown>
 	  }
 	| DescType<T>
 
-type DescType<T> = {
+type DescType<T, Self = typeinit<_typedef_<T>>> = {
 	[at_name]: string
 	[at_type]: TypeDesc<unknown>
-	[at_mock]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
-	[at_value]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
-	[at_adjust]: (self: typeinit<_typedef_<T>>) => typeinit<_typedef_<T>>
-	[at_verify]: (self: typeinit<_typedef_<T>>) => void
-	[at_init]: (self: typeinit<_typedef_<T>>) => void
+	[at_mock]: (self: Self) => Self
+	[at_value]: (self: Self) => Self
+	[at_adjust]: (self: Self) => Self
+	[at_verify]: (self: Self) => void
+	[at_init]: (self: Self) => void
 	[at_retain]: (
-		self: typeinit<_typedef_<T>>,
+		self: Self,
 		parentStruct: Struct<StructType>,
 		fieldName: string
 	) => void
 	[at_release]: (
-		self: typeinit<_typedef_<T>>,
+		self: Self,
 		parentStruct: Struct<StructType>,
 		fieldName: string
 	) => void
@@ -467,7 +469,7 @@ function TypeDesc_prepare(
 			}
 			for (const [k, v] of self[syl_observers]) {
 				const node = ObserveNode_init(v)
-				node.executor = v.executor
+				node.executor = v.executor!
 				node.virtual = virtual
 				node.running = false
 				map.set(k, node)
@@ -614,10 +616,10 @@ function TypeDesc_init(
 				case float64:
 					return mock ? random() : 0
 				case string:
-					return mock ? 'hello rainforest' : ''
+					return mock ? random().toString(36).slice(2) : ''
 			}
 			// case bool:
-			return mock ? random() > 0.5 : false
+			return mock ? random() < 0.5 : false
 		case Kind.unknown:
 			return isLiteral ? literal : void 0
 	}
@@ -856,10 +858,7 @@ type _typedef_<T> = T extends infer O
  *
  * @public
  */
-export function typedef<T extends Desc<T>>(
-	desc: T,
-	tdesc?: _typedef_<T>
-): _typedef_<T> {
+export function typedef<T>(desc: Desc<T>, tdesc?: _typedef_<T>): _typedef_<T> {
 	return <_typedef_<T>>TypeDesc_define(desc, tdesc)
 }
 
