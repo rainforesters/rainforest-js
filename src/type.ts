@@ -123,10 +123,7 @@ function isWrapValue(v: unknown): v is WrapValue {
  *
  * @public
  */
-export function wrapval<T>(
-	desc: Record<string, unknown>,
-	val?: T
-): Readonly<T> {
+export function wrapval<T>(desc: Record<string, unknown>, val?: T): T {
 	if (!isObject(desc)) {
 		throw Error('description is invalid')
 	}
@@ -322,6 +319,22 @@ function TypeDesc_kind(self: TypeDesc<unknown>) {
 	return kind === Kind.decorate ? self[syl_type][0][syl_kind] : kind
 }
 
+function fieldError(fieldName: string, msg: string) {
+	return fieldName ? `field '${fieldName}' ${msg}` : msg
+}
+
+function fieldValueError(
+	fieldName: string,
+	expectedType: string,
+	gotValue: unknown
+) {
+	return fieldError(
+		fieldName,
+		`expected ${expectedType}, but got ` +
+			(typeof gotValue === 'string' ? `'${gotValue}'` : gotValue)
+	)
+}
+
 const enum Flag {
 	adjust = 1, // 对数据进行修正
 	self = 2, // 只校验当前自身的类型描述
@@ -331,26 +344,27 @@ function TypeDesc_check(
 	self: TypeDesc<unknown>,
 	accepted: TypeDesc<unknown>,
 	val: unknown,
-	flag: Flag
+	flag: Flag,
+	fieldName: string
 ) {
 	switch (self[syl_kind]) {
 		case Kind.struct:
 			if (isNotnil(val)) {
 				if (!isStruct(val)) {
-					throw TypeError(`expected struct, but got ${val}`)
+					throw TypeError(fieldValueError(fieldName, 'struct', val))
 				}
 				if (!val[syl_init][syl_accept].has(accepted)) {
 					if (val[syl_type] !== self) {
-						throw TypeError('type mismatch')
+						throw TypeError(fieldError(fieldName, 'type mismatch'))
 					}
-					throw TypeError('decorate mismatch')
+					throw TypeError(fieldError(fieldName, 'decorate mismatch'))
 				}
 			} else if (self[syl_notnil]) {
-				throw Error('must not be nil')
+				throw Error(fieldError(fieldName, 'must not be nil'))
 			}
 			self[syl_verify]?.(val)
 			if (flag & Flag.adjust && self[syl_adjust]) {
-				val = TypeDesc_check2(self, accepted, val, 0, syl_adjust)
+				val = TypeDesc_check2(self, accepted, val, 0, syl_adjust, fieldName)
 			}
 			break
 		case Kind.decorate: {
@@ -362,7 +376,7 @@ function TypeDesc_check(
 				i = l
 			} else {
 				// 首先校验原始的类型描述
-				val = TypeDesc_check(ts[0], accepted, val, flag)
+				val = TypeDesc_check(ts[0], accepted, val, flag, fieldName)
 			}
 			let b = true
 			let t: TypeDesc<unknown>
@@ -375,11 +389,11 @@ function TypeDesc_check(
 					b = false
 				}
 				if (t[syl_notnil] && !isNotnil(val)) {
-					throw Error('must not be nil')
+					throw Error(fieldError(fieldName, 'must not be nil'))
 				}
 				t[syl_verify]?.(val)
 				if (flag & Flag.adjust && t[syl_adjust]) {
-					val = TypeDesc_check2(t, accepted, val, 0, syl_adjust)
+					val = TypeDesc_check2(t, accepted, val, 0, syl_adjust, fieldName)
 				}
 			} while (b)
 			break
@@ -389,22 +403,22 @@ function TypeDesc_check(
 			switch (self) {
 				case int32:
 					if (t !== 'number' || val !== ((<int32>val) | 0)) {
-						throw TypeError(`expected int32, but got ${val}`)
+						throw TypeError(fieldValueError(fieldName, 'int32', val))
 					}
 					break
 				case float64:
 					if (t !== 'number') {
-						throw TypeError(`expected float64, but got ${val}`)
+						throw TypeError(fieldValueError(fieldName, 'float64', val))
 					}
 					break
 				case string:
 					if (t !== 'string') {
-						throw TypeError(`expected string, but got ${val}`)
+						throw TypeError(fieldValueError(fieldName, 'string', val))
 					}
 					break
 				case bool:
 					if (t !== 'boolean') {
-						throw TypeError(`expected bool, but got ${val}`)
+						throw TypeError(fieldValueError(fieldName, 'bool', val))
 					}
 					break
 			}
@@ -419,14 +433,15 @@ function TypeDesc_check2(
 	accepted: TypeDesc<unknown>,
 	val: unknown,
 	flag: Flag,
-	syl: typeof syl_mock | typeof syl_value | typeof syl_adjust
+	syl: typeof syl_mock | typeof syl_value | typeof syl_adjust,
+	fieldName: string
 ) {
 	const newVal = self[syl](val)
 	if (val !== newVal || isObject(newVal)) {
-		val = TypeDesc_check(self, accepted, newVal, flag)
+		val = TypeDesc_check(self, accepted, newVal, flag, fieldName)
 	} else if (flag) {
 		// 即使与原值相同，也要对修饰的类型描述自身进行校验，防止绕过校验
-		val = TypeDesc_check(self, accepted, newVal, flag | Flag.self)
+		val = TypeDesc_check(self, accepted, newVal, flag | Flag.self, fieldName)
 	}
 	return val
 }
@@ -436,17 +451,37 @@ function TypeDesc_prepare(
 	accepted: TypeDesc<unknown>,
 	val: unknown,
 	mock: boolean,
-	isLiteral: boolean
+	isLiteral: boolean,
+	fieldName: string
 ): unknown {
 	if (isLiteral) {
-		return TypeDesc_check(self, accepted, val, Flag.adjust | Flag.self)
+		return TypeDesc_check(
+			self,
+			accepted,
+			val,
+			Flag.adjust | Flag.self,
+			fieldName
+		)
 	}
 	if (mock && self[syl_mock]) {
-		val = TypeDesc_check2(self, accepted, val, Flag.adjust, syl_mock)
+		val = TypeDesc_check2(self, accepted, val, Flag.adjust, syl_mock, fieldName)
 	} else if (self[syl_value]) {
-		val = TypeDesc_check2(self, accepted, val, Flag.adjust, syl_value)
+		val = TypeDesc_check2(
+			self,
+			accepted,
+			val,
+			Flag.adjust,
+			syl_value,
+			fieldName
+		)
 	} else {
-		val = TypeDesc_check(self, accepted, val, Flag.adjust | Flag.self)
+		val = TypeDesc_check(
+			self,
+			accepted,
+			val,
+			Flag.adjust | Flag.self,
+			fieldName
+		)
 	}
 	if (isNotnil(val)) {
 		if (self[syl_observers]) {
@@ -486,7 +521,8 @@ function TypeDesc_init(
 	accepted: TypeDesc<unknown>,
 	literal: unknown,
 	circular: Set<TypeDesc<unknown>>,
-	mock: boolean
+	mock: boolean,
+	fieldName: string
 ): unknown {
 	let isLiteral = false
 	if (void 0 !== literal) {
@@ -508,7 +544,7 @@ function TypeDesc_init(
 			if (isLiteral) {
 				if (null === literal) {
 					if (self[syl_notnil]) {
-						throw Error('must not be nil')
+						throw Error(fieldError(fieldName, 'must not be nil'))
 					}
 					return literal
 				}
@@ -519,7 +555,7 @@ function TypeDesc_init(
 			}
 			if (void 0 !== literal) {
 				if (!isObject(literal)) {
-					throw TypeError(`expected struct, but got ${literal}`)
+					throw TypeError(fieldValueError(fieldName, 'struct', literal))
 				}
 				isLiteral = false
 			}
@@ -541,7 +577,7 @@ function TypeDesc_init(
 					if (t[syl_notnil]) {
 						// 因为循环引用，所以此时为 nil
 						console.warn(
-							'This will form a circular reference, so it must be nil.'
+							`field '${fieldName}': This will form a circular reference, so it must be nil.`
 						)
 						return
 					}
@@ -564,10 +600,10 @@ function TypeDesc_init(
 				let v = l
 				if (t[syl_noinit] && void 0 === l) {
 					if (t[syl_notnil]) {
-						throw Error('must not be nil')
+						throw Error(fieldError(k, 'must not be nil'))
 					}
 				} else {
-					v = TypeDesc_init(t, t, l, circular, mock)
+					v = TypeDesc_init(t, t, l, circular, mock, k)
 				}
 				virtual.push({
 					name: k,
@@ -591,7 +627,8 @@ function TypeDesc_init(
 				accepted,
 				isLiteral ? literal : void 0,
 				circular,
-				mock
+				mock,
+				fieldName
 			)
 			if (ts[0][syl_kind] === Kind.struct) {
 				if (void 0 === ret) {
@@ -602,13 +639,13 @@ function TypeDesc_init(
 			}
 			// 遍历 1-n 进行处理
 			for (let i = 1, l = ts.length; i < l; i++) {
-				ret = TypeDesc_prepare(ts[i], accepted, ret, mock, isLiteral)
+				ret = TypeDesc_prepare(ts[i], accepted, ret, mock, isLiteral, fieldName)
 			}
 			break
 		}
 		case Kind.primitive:
 			if (isLiteral) {
-				return TypeDesc_check(self, accepted, literal, 0)
+				return TypeDesc_check(self, accepted, literal, 0, fieldName)
 			}
 			switch (self) {
 				case int32:
@@ -623,7 +660,7 @@ function TypeDesc_init(
 		case Kind.unknown:
 			return isLiteral ? literal : void 0
 	}
-	return TypeDesc_prepare(self, accepted, ret, mock, isLiteral)
+	return TypeDesc_prepare(self, accepted, ret, mock, isLiteral, fieldName)
 }
 
 function TypeDesc_proto(self: TypeDesc<unknown>): ProtoDesc {
@@ -924,7 +961,7 @@ export function typeinit<T extends TypeDesc<unknown>>(
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
-	return <typeinit<T>>TypeDesc_init(tdesc, tdesc, literal, null!, false)
+	return <typeinit<T>>TypeDesc_init(tdesc, tdesc, literal, null!, false, '')
 }
 
 type _structbody_<T> = Readonly<T extends TypeDesc<Struct<infer U>> ? U : never>
@@ -1027,7 +1064,7 @@ function VirtualValue_set(
 	struct: Struct<StructType>
 ) {
 	if (self.running) {
-		throw Error('the last rule is not over yet')
+		throw Error(fieldError(self.name, 'the last rule is not over yet'))
 	}
 	const { type: tdesc, value: oldVal, observers } = self
 	if (isWrapValue(val)) {
@@ -1035,7 +1072,7 @@ function VirtualValue_set(
 	}
 	let diff = oldVal !== val
 	if (diff || tdesc[syl_adjust]) {
-		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust)
+		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust, self.name)
 		diff = oldVal !== val
 	}
 	self.running = true
@@ -1093,18 +1130,18 @@ function VirtualValue_set(
 	self.running = false
 }
 
-function ObserveNode_dispatch(self: ObserveNode) {
+function ObserveNode_dispatch(self: ObserveNode, fieldName?: string) {
 	self.bitmap = 0
 	const { parent } = self
 	if (parent) {
 		parent.bitmap |= 1 << self.bit
 		if (parent.bitmap === parent.test || parent.or) {
-			ObserveNode_dispatch(parent)
+			ObserveNode_dispatch(parent, self.name)
 		}
 		return
 	}
 	if (self.running) {
-		throw Error('the last rule is not over yet')
+		throw Error(fieldError(fieldName!, 'the last rule is not over yet'))
 	}
 	self.running = true
 	const ret = self.executor!(self.virtual.value)
@@ -1243,7 +1280,7 @@ function ObserveFieldNodeDesc_fields(
 	}
 	if (i) {
 		if (i > 32) {
-			throw Error('observed fields is greater than 32')
+			throw Error(fieldError(parent.name, 'observed fields is greater than 32'))
 		}
 		parent.children = children
 	}
@@ -1271,11 +1308,11 @@ function ObserveFieldNodeDesc_init(
 			node.or = !!body[at_or]
 			if (!ObserveFieldNodeDesc_fields(tdesc, body, node)) {
 				if (!(at_diff in body || at_notnil in body)) {
-					throw Error('observe has no fields')
+					throw Error(fieldError(name, 'observe has no fields'))
 				}
 			}
 		} else if (!(at_diff in body || at_notnil in body)) {
-			throw TypeError('type is not struct')
+			throw TypeError(fieldError(name, 'type is not struct'))
 		}
 	}
 	return node

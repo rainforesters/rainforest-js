@@ -93,7 +93,7 @@ export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> 
 export const unknown: TypeDesc<unknown>;
 
 // @public
-export function wrapval<T>(desc: Record<string, unknown>, val?: T): Readonly<T>;
+export function wrapval<T>(desc: Record<string, unknown>, val?: T): T;
 
 // (No @packageDocumentation comment for this package)
 
