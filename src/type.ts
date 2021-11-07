@@ -1063,22 +1063,22 @@ function VirtualValue_set(
 	val: unknown,
 	struct: Struct<StructType>
 ) {
+	const { type: tdesc, value: oldVal, observers, name: fieldName } = self
 	if (self.running) {
-		throw Error(fieldError(self.name, 'the last rule is not over yet'))
+		throw Error(fieldError(fieldName, 'the last rule is not over yet'))
 	}
-	const { type: tdesc, value: oldVal, observers } = self
 	if (isWrapValue(val)) {
 		val = (<WrapValue>val)[syl_value]
 	}
 	let diff = oldVal !== val
 	if (diff || tdesc[syl_adjust]) {
-		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust, self.name)
+		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust, fieldName)
 		diff = oldVal !== val
 	}
 	self.running = true
 	const notnil = isNotnil(val)
 	if (diff) {
-		const { name, dist } = self
+		const { dist } = self
 		if (dist) {
 			let count = 0
 			for (const n of observers) {
@@ -1108,10 +1108,10 @@ function VirtualValue_set(
 			}
 		}
 		if (tdesc[syl_release] && isNotnil(oldVal)) {
-			tdesc[syl_release](oldVal, struct, name)
+			tdesc[syl_release](oldVal, struct, fieldName)
 		}
 		if (tdesc[syl_retain] && notnil) {
-			tdesc[syl_retain](val, struct, name)
+			tdesc[syl_retain](val, struct, fieldName)
 		}
 	}
 	for (const n of observers) {
@@ -1119,10 +1119,10 @@ function VirtualValue_set(
 			if (!n.notnil || notnil) {
 				if (n.children) {
 					if (notnil && ObserveNode_check(n, notnil)) {
-						ObserveNode_dispatch(n)
+						ObserveNode_dispatch(n, fieldName)
 					}
 				} else {
-					ObserveNode_dispatch(n)
+					ObserveNode_dispatch(n, fieldName)
 				}
 			}
 		}
@@ -1130,18 +1130,18 @@ function VirtualValue_set(
 	self.running = false
 }
 
-function ObserveNode_dispatch(self: ObserveNode, fieldName?: string) {
+function ObserveNode_dispatch(self: ObserveNode, fieldName: string) {
 	self.bitmap = 0
 	const { parent } = self
 	if (parent) {
 		parent.bitmap |= 1 << self.bit
 		if (parent.bitmap === parent.test || parent.or) {
-			ObserveNode_dispatch(parent, self.name)
+			ObserveNode_dispatch(parent, fieldName)
 		}
 		return
 	}
 	if (self.running) {
-		throw Error(fieldError(fieldName!, 'the last rule is not over yet'))
+		throw Error(fieldError(fieldName, 'the last rule is not over yet'))
 	}
 	self.running = true
 	const ret = self.executor!(self.virtual.value)
@@ -1506,7 +1506,7 @@ export function change(obj: Record<any, any>): void {
 		for (const v of set) {
 			for (const n of v.observers) {
 				if (!n.diff) {
-					ObserveNode_dispatch(n)
+					ObserveNode_dispatch(n, n.name)
 				}
 			}
 		}
