@@ -9,40 +9,36 @@ import { typedef, change, TypeDesc } from './type'
 
 import { array } from './builtin'
 
-const refMap = new WeakMap()
+const refMap = new WeakMap<any, Set<any>>()
 
 const syl_raw = Symbol(),
 	syl_CArray = Symbol()
 
-const CArrayProto: any = {}
-;['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(
-	(key) => {
-		CArrayProto[key] = function (...args: any[]) {
-			const ret = this[syl_raw][key](...args)
-			change(this)
-			return ret
-		}
-	}
-)
 const CArrayHandler = {
 	get(target: any, key: string | number | symbol, receiver: any) {
 		if (key === syl_raw) {
-			return target
-		}
-		const f = CArrayProto[key]
-		if (f) {
-			return f
+			return () => target
 		}
 		return Reflect.get(target, key, receiver)
 	},
 	set(target: any, key: string | number | symbol, value: any, receiver: any) {
 		const ret = Reflect.set(target, key, value, receiver)
-		change(receiver)
+		const set = refMap.get(target)
+		if (set) {
+			for (const v of set) {
+				change(v)
+			}
+		}
 		return ret
 	},
 	deleteProperty(target: any, key: string | number | symbol) {
 		const ret = Reflect.deleteProperty(target, key)
-		change(refMap.get(target))
+		const set = refMap.get(target)
+		if (set) {
+			for (const v of set) {
+				change(v)
+			}
+		}
 		return ret
 	},
 	has(target: any, key: string | number | symbol) {
@@ -62,15 +58,29 @@ export const CArray: TypeDesc<unknown[]> = typedef({
 	'@name': 'CArray',
 	'@type': array,
 	'@change': true,
-	'@adjust': (self: unknown[]) => {
+	'@adjust': (self) => {
 		if (!self) {
 			return self
 		}
 		if (syl_CArray in self) {
 			return self
 		}
-		const ret = new Proxy(self, CArrayHandler)
-		refMap.set(self, ret)
-		return ret
+		return new Proxy(self, CArrayHandler)
+	},
+	'@assert': (self) => {
+		if (self && !(syl_CArray in self)) {
+			throw TypeError('expected CArray')
+		}
+	},
+	'@retain': (self) => {
+		const raw = (<any>self)[syl_raw]()
+		if (!refMap.has(raw)) {
+			refMap.set(raw, new Set<any>())
+		}
+		refMap.get(raw)!.add(self)
+	},
+	'@release': (self) => {
+		const raw = (<any>self)[syl_raw]()
+		refMap.get(raw)!.delete(self)
 	},
 })

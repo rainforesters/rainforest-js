@@ -303,6 +303,7 @@ describe('type', () => {
 	test('initialize struct', () => {
 		const tdesc = typedef({
 			'@verify': (self) => self,
+			'@assert': (self) => self,
 			name: string,
 			sex: bool,
 			age: int32,
@@ -711,14 +712,16 @@ describe('type', () => {
 	test('adjust int32', () => {
 		const tdesc = typedef({
 			value: typedef({
-				'@type': int32,
-				'@adjust': (self) => {
-					return self * 2
-				},
+				'@type': typedef({
+					'@type': int32,
+					'@adjust': (self) => {
+						return self * 2
+					},
+				}),
 			}),
 		})
-		const ret = typeinit(tdesc)
-		expect(ret.value).toBe(0)
+		const ret = typeinit(tdesc, { value: 3 })
+		expect(ret.value).toBe(6)
 		ret.value = 1
 		expect(ret.value).toBe(2)
 		ret.value = 2
@@ -728,18 +731,23 @@ describe('type', () => {
 	test('adjust float64', () => {
 		const tdesc = typedef({
 			value: typedef({
-				'@type': float64,
+				'@type': typedef({
+					'@type': float64,
+					'@adjust': (self) => {
+						return self * 2
+					},
+				}),
 				'@adjust': (self) => {
 					return self * 2
 				},
 			}),
 		})
-		const ret = typeinit(tdesc)
-		expect(ret.value).toBe(0)
+		const ret = typeinit(tdesc, { value: 0.3 })
+		expect(ret.value).toBe(1.2)
 		ret.value = 0.1
-		expect(ret.value).toBe(0.2)
-		ret.value = 0.2
 		expect(ret.value).toBe(0.4)
+		ret.value = 0.2
+		expect(ret.value).toBe(0.8)
 	})
 
 	test('adjust string', () => {
@@ -796,26 +804,7 @@ describe('type', () => {
 		expect(ret.name).toBe('test')
 	})
 
-	test('retain reference', () => {
-		const Ref = typedef({
-			'@retain': (self) => {
-				self.count++
-			},
-			count: int32,
-		})
-		const tdesc = typedef({
-			value: Ref,
-		})
-		const a = typeinit(tdesc)
-		const ref = a.value
-		expect(ref.count).toBe(1)
-		const b = typeinit(tdesc)
-		expect(b.value.count).toBe(1)
-		b.value = ref
-		expect(ref.count).toBe(2)
-	})
-
-	test('release reference', () => {
+	test('retain&release reference', () => {
 		const Ref = typedef({
 			'@retain': (self) => {
 				self.count++
@@ -839,6 +828,63 @@ describe('type', () => {
 		expect(ref.count).toBe(1)
 		a.value = null!
 		expect(ref.count).toBe(0)
+	})
+
+	test('retain&release reference in decorated type', () => {
+		const Ref = typedef({
+			'@type': typedef({
+				'@retain': (self) => {
+					self.count++
+				},
+				'@release': (self) => {
+					self.count--
+				},
+				count: int32,
+				out: int32,
+			}),
+			'@retain': (self) => {
+				self.out++
+			},
+			'@release': (self) => {
+				self.out--
+			},
+		})
+		const tdesc = typedef({
+			value: Ref,
+			sub: typedef({
+				'@type': Ref,
+			}),
+		})
+		const a = typeinit(tdesc)
+		const ref = a.value
+		expect(ref.count).toBe(1)
+		expect(ref.out).toBe(1)
+		const sub = a.sub
+		expect(sub.count).toBe(1)
+		expect(sub.out).toBe(1)
+		const b = typeinit(tdesc)
+		expect(b.value.count).toBe(1)
+		expect(b.value.out).toBe(1)
+		expect(b.sub.count).toBe(1)
+		expect(b.sub.out).toBe(1)
+		b.value = ref
+		expect(ref.count).toBe(2)
+		expect(ref.out).toBe(2)
+		b.sub = sub
+		expect(sub.count).toBe(2)
+		expect(sub.out).toBe(2)
+		b.value = null!
+		expect(ref.count).toBe(1)
+		expect(ref.out).toBe(1)
+		b.sub = null!
+		expect(sub.count).toBe(1)
+		expect(sub.out).toBe(1)
+		a.value = null!
+		expect(ref.count).toBe(0)
+		expect(ref.out).toBe(0)
+		a.sub = null!
+		expect(sub.count).toBe(0)
+		expect(sub.out).toBe(0)
 	})
 
 	test('notnil', () => {
@@ -893,11 +939,24 @@ describe('type', () => {
 			name: string,
 		})
 		const B = typedef({
+			'@type': typedef({
+				name: string,
+			}),
+			'@noinit': true,
+		})
+		const C = typedef({
+			'@type': unknown,
+			'@noinit': true,
+			'@value': () => false,
+		})
+		const D = typedef({
 			name: string,
 		})
 		const tdesc = typedef({
 			a: A,
 			b: B,
+			c: C,
+			d: D,
 		})
 		const ret = typeinit(tdesc)
 		expect(ret.a).toBeUndefined()
@@ -905,10 +964,24 @@ describe('type', () => {
 		expect(ret.a).not.toBeNull()
 		ret.a = null!
 		expect(ret.a).toBeNull()
+		expect(ret.b).toBeUndefined()
+		ret.b = typeinit(B)
 		expect(ret.b).not.toBeNull()
 		ret.b = null!
 		expect(ret.b).toBeNull()
+		expect(ret.c).toBeUndefined()
+		ret.c = typeinit(C)
+		expect(ret.c).not.toBeNull()
+		ret.c = false
+		expect(ret.c).toBe(false)
+		ret.c = true
+		expect(ret.c).toBe(true)
+		expect(ret.d).not.toBeNull()
+		ret.d = null!
+		expect(ret.d).toBeNull()
 		expect(typeinit(A)).toBeDefined()
+		expect(typeinit(B)).toBeDefined()
+		expect(typeinit(C)).toBe(false)
 	})
 
 	test('noinit & notnil', () => {
@@ -1890,6 +1963,13 @@ describe('type', () => {
 			sub: sub,
 		})
 		expect(ret.sub).toBe(sub)
+	})
+
+	test('initialize unkonwn with literal value', () => {
+		const tdesc = typedef({
+			'@type': unknown,
+		})
+		expect(typeinit(tdesc, null)).toBe(null)
 	})
 
 	test('initialize bool with literal value', () => {

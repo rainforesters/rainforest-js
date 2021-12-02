@@ -16,6 +16,7 @@ const at_name = '@name',
 	at_value = '@value',
 	at_verify = '@verify',
 	at_adjust = '@adjust',
+	at_assert = '@assert',
 	at_init = '@init',
 	at_retain = '@retain',
 	at_release = '@release',
@@ -34,12 +35,11 @@ const syl_name = Symbol(),
 	syl_value = Symbol('value'),
 	syl_verify = Symbol('verify'),
 	syl_adjust = Symbol('adjust'),
+	syl_assert = Symbol('assert'),
 	syl_init = Symbol('init'),
 	syl_retain = Symbol('retain'),
 	syl_release = Symbol('release'),
-	syl_noinit = Symbol('noinit'),
-	syl_notnil = Symbol('notnil'),
-	syl_change = Symbol('change'),
+	syl_meta = Symbol('meta'),
 	syl_body = Symbol('body'),
 	syl_proto = Symbol('proto'),
 	syl_virtual = Symbol('virtual'),
@@ -155,6 +155,15 @@ const enum Kind {
 	decorate,
 }
 
+const enum Meta {
+	noinit = 1, // 禁用自动实例化，只能手动实例化
+	notnil = 2, // 不允许为空
+	change = 4, // 标记会手动管理数据内部变动情况（适用于 Array Set Map 等）
+	adjust = 8, // 是否具有 adjust
+	retain = 16, // 是否具有 retain
+	release = 32, // 是否具有 release
+}
+
 type Desc<T> =
 	| {
 			[K in keyof T]: K extends keyof DescType<T>
@@ -170,8 +179,9 @@ type DescType<T, Self = typeinit<_typedef_<T>>> = {
 	[at_type]: TypeDesc<unknown>
 	[at_mock]: (self: Self) => Self
 	[at_value]: (self: Self) => Self
-	[at_adjust]: (self: Self) => Self
 	[at_verify]: (self: Self) => void
+	[at_adjust]: (self: Self) => Self
+	[at_assert]: (self: Self) => void
 	[at_init]: (self: Self) => void
 	[at_retain]: (
 		self: Self,
@@ -216,11 +226,15 @@ interface _TypeDesc_<T> {
 	/**
 	 * @internal
 	 */
+	[syl_verify]: Function // 对数据进行校验
+	/**
+	 * @internal
+	 */
 	[syl_adjust]: Function // 对数据进行修正
 	/**
 	 * @internal
 	 */
-	[syl_verify]: Function // 对数据进行校验
+	[syl_assert]: Function // 对数据进行断言
 	/**
 	 * @internal
 	 */
@@ -236,15 +250,7 @@ interface _TypeDesc_<T> {
 	/**
 	 * @internal
 	 */
-	[syl_noinit]: boolean // 禁用自动实例化，只能手动实例化
-	/**
-	 * @internal
-	 */
-	[syl_notnil]: boolean // 不允许为空
-	/**
-	 * @internal
-	 */
-	[syl_change]: boolean // 标记会手动管理数据内部变动情况（适用于 Array Set Map 等）
+	[syl_meta]: Meta // 禁用自动实例化，只能手动实例化
 
 	/**
 	 * @internal
@@ -359,13 +365,20 @@ function TypeDesc_check(
 					}
 					throw TypeError(fieldError(fieldName, 'decorate mismatch'))
 				}
-			} else if (self[syl_notnil]) {
+			} else if (self[syl_meta] & Meta.notnil) {
 				throw Error(fieldError(fieldName, 'must not be nil'))
 			}
 			self[syl_verify]?.(val)
 			if (flag & Flag.adjust && self[syl_adjust]) {
-				val = TypeDesc_check2(self, accepted, val, 0, syl_adjust, fieldName)
+				val = TypeDesc_check(
+					self,
+					accepted,
+					self[syl_adjust](val),
+					0,
+					fieldName
+				)
 			}
+			self[syl_assert]?.(val)
 			break
 		case Kind.decorate: {
 			const ts = self[syl_type]
@@ -388,13 +401,14 @@ function TypeDesc_check(
 					t = self
 					b = false
 				}
-				if (t[syl_notnil] && !isNotnil(val)) {
+				if (t[syl_meta] & Meta.notnil && !isNotnil(val)) {
 					throw Error(fieldError(fieldName, 'must not be nil'))
 				}
 				t[syl_verify]?.(val)
 				if (flag & Flag.adjust && t[syl_adjust]) {
 					val = TypeDesc_check2(t, accepted, val, 0, syl_adjust, fieldName)
 				}
+				t[syl_assert]?.(val)
 			} while (b)
 			break
 		}
@@ -543,7 +557,7 @@ function TypeDesc_init(
 		case Kind.struct: {
 			if (isLiteral) {
 				if (null === literal) {
-					if (self[syl_notnil]) {
+					if (self[syl_meta] & Meta.notnil) {
 						throw Error(fieldError(fieldName, 'must not be nil'))
 					}
 					return literal
@@ -574,7 +588,7 @@ function TypeDesc_init(
 						t = accepted
 						b = false
 					}
-					if (t[syl_notnil]) {
+					if (t[syl_meta] & Meta.notnil) {
 						// 因为循环引用，所以此时为 nil
 						console.warn(
 							`field '${fieldName}': This will form a circular reference, so it must be nil.`
@@ -598,8 +612,8 @@ function TypeDesc_init(
 				const t = bd[k]
 				const l = literal && literal[k]
 				let v = l
-				if (t[syl_noinit] && void 0 === l) {
-					if (t[syl_notnil]) {
+				if (t[syl_meta] & Meta.noinit && void 0 === l) {
+					if (t[syl_meta] & Meta.notnil) {
 						throw Error(fieldError(k, 'must not be nil'))
 					}
 				} else {
@@ -613,8 +627,14 @@ function TypeDesc_init(
 					dist: 0,
 					running: false,
 				})
-				if (t[syl_retain] && isNotnil(v)) {
-					t[syl_retain](v, ret, k)
+				if (t[syl_meta] & Meta.retain && isNotnil(v)) {
+					if (t[syl_kind] === Kind.decorate) {
+						const ts = t[syl_type]
+						for (const t of ts) {
+							t[syl_retain]?.(v, ret, k)
+						}
+					}
+					t[syl_retain]?.(v, ret, k)
 				}
 			}
 			circular.delete(self)
@@ -747,27 +767,35 @@ function TypeDesc_define(
 	tdesc[syl_kind] = tt ? Kind.decorate : Kind.struct
 	tdesc[syl_name] = name || ''
 	tdesc[syl_type] = null!
-	tdesc[syl_noinit] = false
-	tdesc[syl_notnil] = !!desc[at_notnil]
-	tdesc[syl_change] = false
+	tdesc[syl_meta] = desc[at_notnil] ? Meta.notnil : 0
 	tdesc[syl_mock] = toFunc(desc[at_mock], at_mock)
 	tdesc[syl_value] = toFunc(desc[at_value], at_value)
-	tdesc[syl_adjust] = toFunc(desc[at_adjust], at_adjust)
 	tdesc[syl_verify] = toFunc(desc[at_verify], at_verify)
+	tdesc[syl_adjust] = toFunc(desc[at_adjust], at_adjust)
+	tdesc[syl_assert] = toFunc(desc[at_assert], at_assert)
 	tdesc[syl_init] = toFunc(desc[at_init], at_init)
 	tdesc[syl_retain] = toFunc(desc[at_retain], at_retain)
 	tdesc[syl_release] = toFunc(desc[at_release], at_release)
 	if (tt) {
 		tdesc[syl_type] =
 			tt[syl_kind] === Kind.decorate ? tt[syl_type].concat(tt) : [tt]
+		tdesc[syl_meta] |=
+			tt[syl_meta] & Meta.adjust || tdesc[syl_adjust] ? Meta.adjust : 0
+		tdesc[syl_meta] |=
+			tt[syl_meta] & Meta.retain || tdesc[syl_retain] ? Meta.retain : 0
+		tdesc[syl_meta] |=
+			tt[syl_meta] & Meta.release || tdesc[syl_release] ? Meta.release : 0
 		switch (TypeDesc_kind(tt)) {
 			case Kind.unknown:
 				// 如果原 type 是手动变更的，则之后的也是
-				tdesc[syl_change] = tt[syl_change] || !!desc[at_change]
-				tdesc[syl_noinit] = tt[syl_noinit] || !!desc[at_noinit]
+				tdesc[syl_meta] |=
+					tt[syl_meta] & Meta.change || desc[at_change] ? Meta.change : 0
+				tdesc[syl_meta] |=
+					tt[syl_meta] & Meta.noinit || desc[at_noinit] ? Meta.noinit : 0
 				break
 			case Kind.struct:
-				tdesc[syl_noinit] = tt[syl_noinit] || !!desc[at_noinit]
+				tdesc[syl_meta] |=
+					tt[syl_meta] & Meta.noinit || desc[at_noinit] ? Meta.noinit : 0
 				tdesc[syl_accept] = new Set<TypeDesc<unknown>>(tdesc[syl_type]).add(
 					tdesc
 				)
@@ -775,7 +803,10 @@ function TypeDesc_define(
 				break
 		}
 	} else {
-		tdesc[syl_noinit] = !!desc[at_noinit]
+		tdesc[syl_meta] |= tdesc[syl_adjust] ? Meta.adjust : 0
+		tdesc[syl_meta] |= tdesc[syl_retain] ? Meta.retain : 0
+		tdesc[syl_meta] |= tdesc[syl_release] ? Meta.release : 0
+		tdesc[syl_meta] |= desc[at_noinit] ? Meta.noinit : 0
 		tdesc[syl_accept] = new Set<TypeDesc<unknown>>().add(tdesc)
 		tdesc[syl_observers] = null!
 		tdesc[syl_proto] = null!
@@ -1071,7 +1102,7 @@ function VirtualValue_set(
 		val = (<WrapValue>val)[syl_value]
 	}
 	let diff = oldVal !== val
-	if (diff || tdesc[syl_adjust]) {
+	if (diff || tdesc[syl_meta] & Meta.adjust) {
 		self.value = val = TypeDesc_check(tdesc, tdesc, val, Flag.adjust, fieldName)
 		diff = oldVal !== val
 	}
@@ -1093,7 +1124,7 @@ function VirtualValue_set(
 				}
 			}
 		}
-		if (tdesc[syl_change]) {
+		if (tdesc[syl_meta] & Meta.change) {
 			// 表示该类型可能会手动触发观察者
 			if (isObject(oldVal)) {
 				// 移除旧值的变更元素
@@ -1107,11 +1138,21 @@ function VirtualValue_set(
 				changeMap.get(val)!.add(self)
 			}
 		}
-		if (tdesc[syl_release] && isNotnil(oldVal)) {
-			tdesc[syl_release](oldVal, struct, fieldName)
+		if (tdesc[syl_meta] & Meta.release && isNotnil(oldVal)) {
+			if (tdesc[syl_kind] === Kind.decorate) {
+				for (const t of tdesc[syl_type]) {
+					t[syl_release]?.(oldVal, struct, fieldName)
+				}
+			}
+			tdesc[syl_release]?.(oldVal, struct, fieldName)
 		}
-		if (tdesc[syl_retain] && notnil) {
-			tdesc[syl_retain](val, struct, fieldName)
+		if (tdesc[syl_meta] & Meta.retain && notnil) {
+			if (tdesc[syl_kind] === Kind.decorate) {
+				for (const t of tdesc[syl_type]) {
+					t[syl_retain]?.(val, struct, fieldName)
+				}
+			}
+			tdesc[syl_retain]?.(val, struct, fieldName)
 		}
 	}
 	for (const n of observers) {
@@ -1191,7 +1232,7 @@ function ObserveNode_distribute(self: ObserveNode, virtual: VirtualValue) {
 				ObserveNode_distribute(n, virtual[n.index])
 			}
 		}
-	} else if (virtual.type[syl_change]) {
+	} else if (virtual.type[syl_meta] & Meta.change) {
 		// 表示该类型可能会手动触发观察者
 		if (isObject(val)) {
 			// 为新值注册变更元素
@@ -1216,7 +1257,7 @@ function ObserveNode_remove(self: ObserveNode) {
 			for (const n of children) {
 				ObserveNode_remove(n)
 			}
-		} else if (virtual.type[syl_change]) {
+		} else if (virtual.type[syl_meta] & Meta.change) {
 			// 表示该类型可能会手动触发观察者
 			const val = virtual.value
 			if (isObject(val)) {
