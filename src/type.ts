@@ -1109,11 +1109,15 @@ function VirtualValue_set(
 	struct: Struct<StructType>
 ) {
 	const { type: tdesc, value: oldVal, observers, name: fieldName } = self
+	if (isWrapValue(val)) {
+		const desc = (<WrapValue>val)[syl_desc]
+		val = (<WrapValue>val)[syl_value]
+		if (desc[at_diff] && oldVal === val) {
+			return
+		}
+	}
 	if (self.running) {
 		throw Error(fieldError(fieldName, 'the last rule is not over yet'))
-	}
-	if (isWrapValue(val)) {
-		val = (<WrapValue>val)[syl_value]
 	}
 	let diff = oldVal !== val
 	if (diff || tdesc[syl_meta] & Meta.adjust) {

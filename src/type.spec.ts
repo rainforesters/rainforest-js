@@ -1139,6 +1139,38 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2 {a-b}')
 	})
 
+	test('the rule is executed when the value is different', () => {
+		const tdesc = typedef({
+			input: int32,
+			out: bool,
+		})
+		ruledef(
+			tdesc,
+			'rule',
+			{
+				input: true,
+			},
+			(self) => {
+				self.out = !self.out
+				self.input = wrapval({ '@diff': true }, self.input)
+			}
+		)
+		const ret = typeinit(tdesc)
+		expect(ret.out).toBe(false)
+		ret.input = 1
+		expect(ret.out).toBe(true)
+		ret.input = 2
+		expect(ret.out).toBe(false)
+		ret.input = wrapval({ '@diff': true }, 1)
+		expect(ret.out).toBe(true)
+		ret.input = wrapval({ '@diff': true }, 1)
+		expect(ret.out).toBe(true)
+		ret.input = wrapval({ '@diff': true }, 2)
+		expect(ret.out).toBe(false)
+		ret.input = wrapval({ '@diff': true }, 2)
+		expect(ret.out).toBe(false)
+	})
+
 	test('the rule is executed when the parameters are different', () => {
 		const tdesc = typedef({
 			arg1: int32,
