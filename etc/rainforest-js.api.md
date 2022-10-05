@@ -92,8 +92,10 @@ export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> 
 // @public (undocumented)
 export const unknown: TypeDesc<unknown>;
 
+// Warning: (ae-forgotten-export) The symbol "WrapValueDesc" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function wrapval<T>(desc: Record<string, unknown>, val?: T): T;
+export function wrapval<T>(desc: WrapValueDesc, val?: T): T;
 
 // (No @packageDocumentation comment for this package)
 

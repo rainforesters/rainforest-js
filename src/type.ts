@@ -104,9 +104,11 @@ function isNotnil(v: unknown): boolean {
 	return null !== v && void 0 !== v
 }
 
+type WrapValueDesc = Record<`@${string}`, unknown>
+
 interface WrapValue {
 	[syl_wrap]: true
-	[syl_desc]: Record<string, unknown>
+	[syl_desc]: WrapValueDesc
 	[syl_value]: unknown
 }
 
@@ -123,7 +125,7 @@ function isWrapValue(v: unknown): v is WrapValue {
  *
  * @public
  */
-export function wrapval<T>(desc: Record<string, unknown>, val?: T): T {
+export function wrapval<T>(desc: WrapValueDesc, val?: T): T {
 	if (!isObject(desc)) {
 		throw Error('description is invalid')
 	}
@@ -164,15 +166,37 @@ const enum Meta {
 	release = 32, // 是否具有 release
 }
 
-type Desc<T> =
-	| {
-			[K in keyof T]: K extends keyof DescType<T>
-				? DescType<T>[K]
-				: T[K] extends TypeDesc<unknown>
-				? T[K]
-				: TypeDesc<unknown>
-	  }
-	| DescType<T>
+// type Chars<T> = T extends `${infer First}${infer Rest}`
+// 	? First | Chars<Rest>
+// 	: never
+// type IdentifierFirst = Chars<'abcdefghijklmnopqrstuvwxyz_'>
+// type IdentifierChars = IdentifierFirst | Chars<'0123456789'>
+// type Identifier<
+// 	T,
+// 	S = T extends string ? Lowercase<T> : never
+// > = S extends `${infer First}${infer _}`
+// 	? First extends IdentifierFirst
+// 		? Chars<S> extends IdentifierChars
+// 			? T
+// 			: never
+// 		: never
+// 	: never
+type Identifier<T> = T extends string ? T : never
+
+type Desc<T> = T extends { [at_type]: TypeDesc<unknown> }
+	? Partial<DescType<T>> | DescType<T>
+	:
+			| {
+					[K in keyof T]: K extends keyof DescType<T>
+						? DescType<T>[K]
+						: (T[K] extends TypeDesc<unknown> ? T[K] : TypeDesc<unknown>) &
+								(K extends Identifier<K>
+									? T[K] extends TypeDesc<unknown>
+										? T[K]
+										: TypeDesc<unknown>
+									: never)
+			  }
+			| DescType<T>
 
 type DescType<T, Self = typeinit<_typedef_<T>>> = {
 	[at_name]: string
@@ -871,11 +895,7 @@ export const string = primitiveDesc<string>('string')
 export const unknown = primitiveDesc<unknown>('unknown', Kind.unknown)
 
 type keysof<T> = {
-	[K in keyof T]: T[K] extends TypeDesc<unknown>
-		? K extends string
-			? K
-			: never
-		: never
+	[K in keyof T]: T[K] extends TypeDesc<unknown> ? Identifier<K> : never
 }[keyof T]
 
 type _typedef_<T> = T extends infer O
@@ -884,11 +904,9 @@ type _typedef_<T> = T extends infer O
 				? U extends TypeDesc<infer V>
 					? V
 					: never
-				: Struct<
-						{
-							[K in keysof<O>]: O[K]
-						}
-				  >
+				: Struct<{
+						[K in keysof<O>]: O[K]
+				  }>
 	  >
 	: never
 
@@ -944,15 +962,13 @@ type literal<T> = T extends Struct<StructType>
 export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
 	? U extends Struct<infer V>
 		? V extends StructTypeDesc
-			? Struct<
-					{
-						[K in keysof<U>]: U[K] extends infer O
-							? O extends TypeDesc<unknown>
-								? typeinit<O>
-								: never
+			? Struct<{
+					[K in keysof<U>]: U[K] extends infer O
+						? O extends TypeDesc<unknown>
+							? typeinit<O>
 							: never
-					}
-			  >
+						: never
+			  }>
 			: never
 		: U
 	: never
@@ -1026,13 +1042,11 @@ export function structbody<T extends TypeDesc<Struct<StructTypeDesc>>>(
  */
 export type structof<T extends Struct<StructType>> = T extends Struct<infer U>
 	? TypeDesc<
-			Struct<
-				{
-					[K in keyof U]: U[K] extends Struct<StructType>
-						? structof<U[K]>
-						: TypeDesc<U[K]>
-				}
-			>
+			Struct<{
+				[K in keyof U]: U[K] extends Struct<StructType>
+					? structof<U[K]>
+					: TypeDesc<U[K]>
+			}>
 	  >
 	: never
 
