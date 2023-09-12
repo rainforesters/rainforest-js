@@ -1,7 +1,7 @@
+import terser from '@rollup/plugin-terser'
 import path from 'path'
 import ts from 'rollup-plugin-typescript2'
-import { terser } from 'rollup-plugin-terser'
-import pkg from './package.json'
+import pkg from './package.json' assert { type: 'json' }
 
 const outputCfg = {
 	sourcemap: true,
