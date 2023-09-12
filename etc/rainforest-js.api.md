@@ -6,8 +6,8 @@
 
 // @public (undocumented)
 export type array<T extends TypeDesc<unknown>> = {
-    [__T__]: T[];
-};
+    [__T__]: T;
+}[];
 
 // @public (undocumented)
 export const array: TypeDesc<unknown[]>;
@@ -92,7 +92,7 @@ export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: litera
 // @public (undocumented)
 export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> ? U extends Struct<infer V> ? V extends StructTypeDesc ? Struct<{
     [K in keysof<U>]: U[K] extends infer O ? O extends TypeDesc<unknown> ? typeinit<O> : never : never;
-}> : never : U extends array<infer V> ? typeinit<V>[] : U : never;
+}> : never : U extends never[] ? U : U extends array<infer V> ? typeinit<V>[] : U : never;
 
 // @public (undocumented)
 export const unknown: TypeDesc<unknown>;

@@ -459,7 +459,7 @@ describe('type', () => {
 			{
 				name: string,
 				next: tdesc,
-				list: array as unknown as TypeDesc<array<tdesc>>,
+				list: array as TypeDesc<array<tdesc>>,
 			},
 			tdesc
 		)

@@ -925,7 +925,7 @@ export const object = typedef({
 /**
  * @public
  */
-export type array<T extends TypeDesc<unknown>> = { [__T__]: T[] }
+export type array<T extends TypeDesc<unknown>> = { [__T__]: T }[]
 
 /**
  * @public
@@ -946,15 +946,15 @@ type keysof<T> = {
 }[keyof T]
 
 type _typedef_<T> = T extends infer O
-	? TypeDesc<
-			O extends { [at_type]: infer U }
-				? U extends TypeDesc<infer V>
-					? V
-					: never
-				: Struct<{
-						[K in keysof<O>]: O[K]
-				  }>
-	  >
+	? O extends { [at_type]: infer U }
+		? U extends TypeDesc<unknown>
+			? U
+			: never
+		: TypeDesc<
+				Struct<{
+					[K in keysof<O>]: O[K]
+				}>
+		  >
 	: never
 
 /**
@@ -1017,6 +1017,8 @@ export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
 						: never
 			  }>
 			: never
+		: U extends never[]
+		? U
 		: U extends array<infer V>
 		? typeinit<V>[]
 		: U
