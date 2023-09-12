@@ -49,7 +49,7 @@ const syl_name = Symbol(),
 	syl_wrap = Symbol('wrap'),
 	syl_class = Symbol('class')
 
-const changeMap = new WeakMap<any, Set<VirtualValue>>()
+const changeMap = new WeakMap<object, Set<VirtualValue>>()
 
 const propCache = new Array(64)
 for (let i = 0; i < 64; i++) {
@@ -71,14 +71,14 @@ function propDef(index: number) {
 	)
 }
 
-function hideProp<T>(obj: unknown, key: string | number | symbol, value: T): T {
+function hideProp<T>(obj: unknown, key: PropertyKey, value: T): T {
 	Object.defineProperty(obj, key, {
 		value,
 	})
 	return value
 }
 
-function toFunc(f: unknown, msg: string): Function {
+function toFunc(f: unknown, msg: string): () => void {
 	if (f) {
 		if (!isFunc(f)) {
 			throw Error(`${msg} is not a function`)
@@ -88,7 +88,7 @@ function toFunc(f: unknown, msg: string): Function {
 	return null!
 }
 
-function isFunc(v: unknown): v is Function {
+function isFunc(v: unknown): v is () => void {
 	return typeof v === 'function'
 }
 
@@ -132,11 +132,11 @@ export function wrapval<T>(desc: WrapValueDesc, val?: T): T {
 	if (isWrapValue(val)) {
 		throw Error('cannot wrap the already wrapped value')
 	}
-	return <T>(<unknown>{
+	return {
 		[syl_wrap]: true,
 		[syl_desc]: desc,
 		[syl_value]: val,
-	})
+	} as unknown as T
 }
 
 interface ProtoDesc {
@@ -158,6 +158,7 @@ const enum Kind {
 }
 
 const enum Meta {
+	_ = 0,
 	noinit = 1, // 禁用自动实例化，只能手动实例化
 	notnil = 2, // 不允许为空
 	change = 4, // 标记会手动管理数据内部变动情况（适用于 Array Set Map 等）
@@ -224,9 +225,11 @@ type DescType<T, Self = typeinit<_typedef_<T>>> = {
 }
 
 declare const __type__: unique symbol
+declare const __T__: unique symbol
 
 interface _TypeDesc_<T> {
 	[__type__]: 'TypeDesc'
+	[__T__]: T
 	/**
 	 * @internal
 	 */
@@ -242,35 +245,43 @@ interface _TypeDesc_<T> {
 	/**
 	 * @internal
 	 */
-	[syl_mock]: Function // 实例化时返回模拟数据
+	[syl_mock]: (self: unknown) => unknown // 实例化时返回模拟数据
 	/**
 	 * @internal
 	 */
-	[syl_value]: Function // 实例化时返回默认数据
+	[syl_value]: (self: unknown) => unknown // 实例化时返回默认数据
 	/**
 	 * @internal
 	 */
-	[syl_verify]: Function // 对数据进行校验
+	[syl_verify]: (self: unknown) => void // 对数据进行校验
 	/**
 	 * @internal
 	 */
-	[syl_adjust]: Function // 对数据进行修正
+	[syl_adjust]: (self: unknown) => unknown // 对数据进行修正
 	/**
 	 * @internal
 	 */
-	[syl_assert]: Function // 对数据进行断言
+	[syl_assert]: (self: unknown) => void // 对数据进行断言
 	/**
 	 * @internal
 	 */
-	[syl_init]: Function // 对数据进行初始化
+	[syl_init]: (self: unknown) => void // 对数据进行初始化
 	/**
 	 * @internal
 	 */
-	[syl_retain]: Function // 被 struct 引用时调用
+	[syl_retain]: (
+		self: unknown,
+		parentStruct: unknown,
+		fieldName: string
+	) => void // 被 struct 引用时调用
 	/**
 	 * @internal
 	 */
-	[syl_release]: Function // 从 struct 中移除时调用
+	[syl_release]: (
+		self: unknown,
+		parentStruct: unknown,
+		fieldName: string
+	) => void // 从 struct 中移除时调用
 	/**
 	 * @internal
 	 */
@@ -303,10 +314,11 @@ interface _TypeDesc_<T> {
  */
 export type TypeDesc<T> = _TypeDesc_<T>
 
-const TypeDesc = class TypeDesc {}
+const TypeDesc = class {}
 
-type _Struct_ = {
+type _Struct_<T> = {
 	[__type__]: 'Struct'
+	[__T__]: T
 	/**
 	 * @internal
 	 */
@@ -332,9 +344,9 @@ type StructTypeDesc = Record<string, TypeDesc<unknown>>
 /**
  * @public
  */
-export type Struct<T extends StructType> = T & _Struct_
+export type Struct<T extends StructType> = T & _Struct_<T>
 
-const Struct = class Struct {}
+const Struct = class {}
 
 function isStruct(v: unknown): v is Struct<StructType> {
 	return isObject(v) && syl_virtual in v
@@ -366,6 +378,7 @@ function fieldValueError(
 }
 
 const enum Flag {
+	_ = 0,
 	adjust = 1, // 对数据进行修正
 	self = 2, // 只校验当前自身的类型描述
 }
@@ -398,7 +411,7 @@ function TypeDesc_check(
 					self,
 					accepted,
 					self[syl_adjust](val),
-					0,
+					Flag._,
 					fieldName
 				)
 			}
@@ -440,7 +453,7 @@ function TypeDesc_check(
 			const t = typeof val
 			switch (self) {
 				case int32:
-					if (t !== 'number' || val !== ((<int32>val) | 0)) {
+					if (t !== 'number' || val !== ((val as int32) | 0)) {
 						throw TypeError(fieldValueError(fieldName, 'int32', val))
 					}
 					break
@@ -524,7 +537,7 @@ function TypeDesc_prepare(
 	if (isNotnil(val)) {
 		if (self[syl_observers]) {
 			// 如果有观察者，则构造观察者结构
-			const struct = <Struct<StructType>>val
+			const struct = val as Struct<StructType>
 			let virtual: VirtualValue
 			let map = struct[syl_observers]
 			if (map) {
@@ -689,7 +702,7 @@ function TypeDesc_init(
 		}
 		case Kind.primitive:
 			if (isLiteral) {
-				return TypeDesc_check(self, accepted, literal, 0, fieldName)
+				return TypeDesc_check(self, accepted, literal, Flag._, fieldName)
 			}
 			switch (self) {
 				case int32:
@@ -715,11 +728,11 @@ function TypeDesc_proto(self: TypeDesc<unknown>): ProtoDesc {
 	if (proto) {
 		return proto
 	}
-	proto = self[syl_proto] = <ProtoDesc>{
+	proto = self[syl_proto] = {
 		[syl_type]: self,
 		[syl_body]: {},
 		[syl_proto]: {},
-	}
+	} as ProtoDesc
 	const { [syl_body]: body, [syl_proto]: descs } = proto
 	let index = 0
 	const bd = Object.freeze(self[syl_body])
@@ -742,7 +755,8 @@ function TypeDesc_proto(self: TypeDesc<unknown>): ProtoDesc {
 function TypeDesc_body(self: TypeDesc<unknown>, body: Record<string, unknown>) {
 	let b = false
 	const bd = (self[syl_body] = self[syl_body] || {})
-	for (const k of Object.keys(body)) {
+	const keys = Object.keys(body)
+	for (const k of keys) {
 		if (k[0] !== '@') {
 			if (!RE_identifier.test(k)) {
 				throw Error(`field '${k}' is invalid`)
@@ -754,6 +768,9 @@ function TypeDesc_body(self: TypeDesc<unknown>, body: Record<string, unknown>) {
 			bd[k] = v
 			b = true
 		}
+	}
+	if (!b && keys.length) {
+		throw Error('empty struct cannot have any fields')
 	}
 	return b
 }
@@ -773,25 +790,22 @@ function TypeDesc_define(
 		if (tdesc[syl_proto]) {
 			throw Error('type is already defined')
 		}
-		TypeDesc_body(tdesc, desc)
-		TypeDesc_proto(tdesc)
-		return tdesc
 	}
-	const tt = <TypeDesc<unknown>>desc[at_type]
+	const tt = desc[at_type] as TypeDesc<unknown>
 	if (tt && !isTypeDesc(tt)) {
 		throw TypeError('type is wrong')
 	}
-	const name = <string>desc[at_name]
+	const name = desc[at_name] as string
 	if (name) {
 		if (!isString(name) || !RE_name.test(name)) {
 			throw Error('name is invalid')
 		}
 	}
-	tdesc = <TypeDesc<unknown>>new TypeDesc()
+	tdesc = tdesc || (new TypeDesc() as TypeDesc<unknown>)
 	tdesc[syl_kind] = tt ? Kind.decorate : Kind.struct
 	tdesc[syl_name] = name || ''
 	tdesc[syl_type] = null!
-	tdesc[syl_meta] = desc[at_notnil] ? Meta.notnil : 0
+	tdesc[syl_meta] = desc[at_notnil] ? Meta.notnil : Meta._
 	tdesc[syl_mock] = toFunc(desc[at_mock], at_mock)
 	tdesc[syl_value] = toFunc(desc[at_value], at_value)
 	tdesc[syl_verify] = toFunc(desc[at_verify], at_verify)
@@ -854,7 +868,7 @@ function primitiveDesc<T>(
 	name: string,
 	kind: Kind = Kind.primitive
 ): TypeDesc<T> {
-	const tdesc = <TypeDesc<T>>new TypeDesc()
+	const tdesc = new TypeDesc() as TypeDesc<T>
 	tdesc[syl_kind] = kind
 	tdesc[syl_name] = name
 	return Object.freeze(tdesc)
@@ -893,6 +907,39 @@ export const string = primitiveDesc<string>('string')
  * @public
  */
 export const unknown = primitiveDesc<unknown>('unknown', Kind.unknown)
+
+/**
+ * @public
+ */
+export const object = typedef({
+	[at_name]: 'object',
+	[at_type]: unknown as TypeDesc<object>,
+	[at_value]: () => ({}),
+	[at_verify]: (self) => {
+		if (null !== self && void 0 !== self && typeof self !== 'object') {
+			throw TypeError('expected object')
+		}
+	},
+})
+
+/**
+ * @public
+ */
+export type array<T extends TypeDesc<unknown>> = { [__T__]: T[] }
+
+/**
+ * @public
+ */
+export const array = typedef({
+	[at_name]: 'array',
+	[at_type]: unknown as TypeDesc<unknown[]>,
+	[at_value]: () => [],
+	[at_verify]: (self) => {
+		if (null !== self && void 0 !== self && !Array.isArray(self)) {
+			throw TypeError('expected array')
+		}
+	},
+})
 
 type keysof<T> = {
 	[K in keyof T]: T[K] extends TypeDesc<unknown> ? Identifier<K> : never
@@ -934,7 +981,7 @@ type _typedef_<T> = T extends infer O
  *   cosplay: Person
  * }>>
  * // 先声明空的 Struct
- * const Person: Person = typedef({})
+ * const Person = typedef({}) as Person
  * typedef({
  *   name: string,
  *   sex: bool,
@@ -945,7 +992,7 @@ type _typedef_<T> = T extends infer O
  * @public
  */
 export function typedef<T>(desc: Desc<T>, tdesc?: _typedef_<T>): _typedef_<T> {
-	return <_typedef_<T>>TypeDesc_define(desc, tdesc)
+	return TypeDesc_define(desc, tdesc) as _typedef_<T>
 }
 
 type literal<T> = T extends Struct<StructType>
@@ -970,6 +1017,8 @@ export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
 						: never
 			  }>
 			: never
+		: U extends array<infer V>
+		? typeinit<V>[]
 		: U
 	: never
 
@@ -1008,7 +1057,7 @@ export function typeinit<T extends TypeDesc<unknown>>(
 	if (!isTypeDesc(tdesc)) {
 		throw TypeError('type is wrong')
 	}
-	return <typeinit<T>>TypeDesc_init(tdesc, tdesc, literal, null!, false, '')
+	return TypeDesc_init(tdesc, tdesc, literal, null!, false, '') as typeinit<T>
 }
 
 type _structbody_<T> = Readonly<T extends TypeDesc<Struct<infer U>> ? U : never>
@@ -1028,13 +1077,13 @@ export function structbody<T extends TypeDesc<Struct<StructTypeDesc>>>(
 		throw TypeError('type is wrong')
 	}
 	if (tdesc[syl_kind] === Kind.decorate) {
-		tdesc = <T>tdesc[syl_type][0]
+		tdesc = tdesc[syl_type][0] as T
 	}
 	if (tdesc[syl_kind] !== Kind.struct) {
 		throw TypeError('type is not struct')
 	}
 	TypeDesc_proto(tdesc)
-	return <_structbody_<T>>tdesc[syl_body]
+	return tdesc[syl_body] as _structbody_<T>
 }
 
 /**
@@ -1062,7 +1111,7 @@ export function structof<T extends Struct<StructType>>(struct: T): structof<T> {
 	if (!isStruct(struct)) {
 		throw TypeError('type is not struct')
 	}
-	return <structof<T>>struct[syl_init]
+	return struct[syl_init] as structof<T>
 }
 
 interface ObserveFieldNodeDesc {
@@ -1074,7 +1123,7 @@ interface ObserveFieldNodeDesc {
 	diff: boolean
 	notnil: boolean
 	children?: ObserveFieldNodeDesc[]
-	executor?: Function
+	executor?: (self: unknown) => unknown
 }
 
 interface ObserveNode {
@@ -1088,10 +1137,12 @@ interface ObserveNode {
 	notnil: boolean // 字段值必须不为空
 	children?: ObserveNode[] // 只有 struct 才会具有子节点
 	parent?: ObserveNode
-	executor?: Function // 待执行的规则（根节点）
+	executor?: (self: unknown) => unknown // 待执行的规则（根节点）
 	virtual: VirtualValue // 此节点引用的 virtual value
 	running?: boolean // 规则执行时，标记运行状态，用来检测无限循环调用的错误
-	[syl_outcome]?: any[] // 用来获取规则执行的结果（在规则执行前设置）
+	[syl_outcome]?: ((value: unknown) => void)[] & {
+		[syl_outcome]: (resolve: (value: unknown) => void) => void
+	} // 用来获取规则执行的结果（在规则执行前设置）
 }
 
 interface VirtualValue {
@@ -1110,8 +1161,8 @@ function VirtualValue_set(
 ) {
 	const { type: tdesc, value: oldVal, observers, name: fieldName } = self
 	if (isWrapValue(val)) {
-		const desc = (<WrapValue>val)[syl_desc]
-		val = (<WrapValue>val)[syl_value]
+		const desc = (val as WrapValue)[syl_desc]
+		val = (val as WrapValue)[syl_value]
 		if (desc[at_diff] && oldVal === val) {
 			return
 		}
@@ -1245,7 +1296,7 @@ function ObserveNode_distribute(self: ObserveNode, virtual: VirtualValue) {
 	if (children) {
 		virtual.dist++
 		if (val) {
-			const virtual = (<Struct<StructType>>val)[syl_virtual]
+			const virtual = (val as Struct<StructType>)[syl_virtual]
 			for (const n of children) {
 				ObserveNode_distribute(n, virtual[n.index])
 			}
@@ -1329,7 +1380,7 @@ function ObserveFieldNodeDesc_fields(
 			parent.test |= 1 << i
 			const node = ObserveFieldNodeDesc_init(
 				fd.type,
-				<Record<string, unknown>>body[k],
+				body[k] as Record<string, unknown>,
 				k
 			)
 			node.bit = i
@@ -1431,7 +1482,7 @@ type observe<T> = T extends TypeDesc<infer U>
  *     name: true,
  *     sex: true,
  *   },
- *   (self: typeinit<typeof Person>) => {
+ *   (self) => {
  *     self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
  *   }
  * )
@@ -1511,7 +1562,7 @@ export function ruledef<T extends TypeDesc<Struct<StructTypeDesc>>>(
  *     name: true,
  *     sex: true,
  *   },
- *   (self: typeinit<typeof Person>) => {
+ *   (self) => {
  *     return self.intro = `My name is ${self.name}, I am a ${self.sex ? 'girl' : 'boy'}.`
  *   }
  * )
@@ -1542,14 +1593,14 @@ export function outcome(
 	if (!node) {
 		throw Error(`rule '${name}' is not defined`)
 	}
-	let arr: any = node[syl_outcome]
+	let arr = node[syl_outcome]
 	if (!arr) {
-		arr = node[syl_outcome] = []
-		arr[syl_outcome] = function (resolve: unknown) {
-			arr.push(resolve)
+		arr = node[syl_outcome] = [] as unknown as typeof arr
+		arr![syl_outcome] = function (resolve: (value: unknown) => void) {
+			arr!.push(resolve)
 		}
 	}
-	return new Promise(arr[syl_outcome])
+	return new Promise(arr![syl_outcome])
 }
 
 /**
@@ -1559,7 +1610,7 @@ export function outcome(
  *
  * @public
  */
-export function change(obj: Record<any, any>): void {
+export function change(obj: object): void {
 	const set: Set<VirtualValue> = changeMap.get(obj)!
 	if (set) {
 		for (const v of set) {

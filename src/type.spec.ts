@@ -6,21 +6,23 @@
  */
 
 import {
-	wrapval,
+	array,
+	bool,
+	change,
+	float64,
+	int32,
+	object,
+	outcome,
 	ruledef,
-	typedef,
-	typeinit,
+	string,
 	structbody,
 	structof,
-	outcome,
-	change,
-	bool,
-	int32,
-	float64,
-	string,
+	typedef,
+	typeinit,
 	unknown,
-	Struct,
-	TypeDesc,
+	wrapval,
+	type Struct,
+	type TypeDesc,
 } from './type'
 
 const at_mock: any = wrapval({ '@mock': true })
@@ -47,14 +49,23 @@ describe('type', () => {
 				next: tdesc
 			}>
 		>
-		const tdesc: tdesc = typedef({})
+		const tdesc = typedef({}) as tdesc
 		typedef(
 			{
+				'@notnil': true,
 				next: tdesc,
 			},
 			tdesc
 		)
 		expect(structbody(tdesc).next).toBe(tdesc)
+		expect(() => {
+			typeinit(tdesc, null!)
+		}).toThrow()
+		expect(() => {
+			typedef({
+				'@notnil': true,
+			})
+		}).toThrow()
 	})
 
 	test('cannot use an empty struct', () => {
@@ -86,13 +97,13 @@ describe('type', () => {
 						{},
 						typedef({
 							'@type': v,
-						})
+						}) as any
 					)
 				}).toThrow()
 			}
 		)
 		expect(() => {
-			typedef({}, <any>{})
+			typedef({}, {} as any)
 		}).toThrow()
 	})
 
@@ -120,7 +131,7 @@ describe('type', () => {
 				{
 					next: tdesc,
 				},
-				tdesc
+				tdesc as any
 			)
 		}).toThrow()
 	})
@@ -136,9 +147,9 @@ describe('type', () => {
 			'@release',
 		].forEach((k) => {
 			expect(() => {
-				typedef(<any>{
+				typedef({
 					[k]: {},
-				})
+				} as any)
 			}).toThrow()
 		})
 	})
@@ -440,32 +451,38 @@ describe('type', () => {
 			Struct<{
 				name: TypeDesc<string>
 				next: tdesc
+				list: TypeDesc<array<tdesc>>
 			}>
 		>
-		const tdesc: tdesc = typedef({})
+		const tdesc = typedef({}) as tdesc
 		typedef(
 			{
 				name: string,
 				next: tdesc,
+				list: array as unknown as TypeDesc<array<tdesc>>,
 			},
 			tdesc
 		)
 		const ret = typeinit(tdesc)
 		expect(ret.name).toBe('')
 		expect(ret.next).toBeUndefined()
+		expect(ret.list.length).toBe(0)
+		ret.list.push(typeinit(tdesc))
+		expect(ret.list[0].list.length).toBe(0)
+		ret.list[0].list.push(typeinit(tdesc))
+		expect(ret.list[0].list[0].list.length).toBe(0)
 
 		type A = TypeDesc<
 			Struct<{
-				b: TypeDesc<Struct<Record<string, never>>>
+				b: TypeDesc<Struct<Record<string, unknown>>>
 				next: A
 			}>
 		>
-		const A: A = typedef({
-			'@notnil': true,
-		})
+		const A = typedef({}) as A
 		const B = typedef({})
 		typedef(
 			{
+				'@notnil': true,
 				b: B,
 				next: A,
 			},
@@ -478,7 +495,7 @@ describe('type', () => {
 					'@notnil': true,
 				}),
 			},
-			B
+			B as any
 		)
 		expect(typeinit(A).next).toBeUndefined()
 	})
@@ -1270,10 +1287,10 @@ describe('type', () => {
 		}).toThrow()
 
 		expect(() => {
-			ruledef(<any>1, '', null!, null!)
+			ruledef(1 as any, '', null!, null!)
 		}).toThrow()
 		expect(() => {
-			ruledef(unknown, '', null!, null!)
+			ruledef(unknown as any, '', null!, null!)
 		}).toThrow()
 	})
 
@@ -1410,11 +1427,11 @@ describe('type', () => {
 			ruledef(
 				tdesc,
 				'rule',
-				<any>{
+				{
 					'@or': true,
 					'@diff': true,
 					'@notnil': true,
-				},
+				} as any,
 				(self) => {
 					self.out = self.input
 				}
@@ -1424,10 +1441,10 @@ describe('type', () => {
 			ruledef(
 				tdesc,
 				'rule',
-				<any>{
+				{
 					'@diff': true,
 					'@notnil': true,
-				},
+				} as any,
 				(self) => {
 					self.out = self.input
 				}
@@ -1673,9 +1690,9 @@ describe('type', () => {
 			ruledef(
 				tdesc,
 				'rule',
-				<any>{
+				{
 					test: true,
-				},
+				} as any,
 				(self) => self
 			)
 		}).toThrow()
@@ -1965,7 +1982,7 @@ describe('type', () => {
 		expect(a.name).not.toBe('')
 		expect(a.sex).toBe(true)
 		const b = typeinit(tdesc, {
-			name: <string>wrapval({ '@mock': true }),
+			name: wrapval({ '@mock': true }) as string,
 			sex: true,
 		})
 		expect(b.name).not.toBe('')
@@ -2110,7 +2127,7 @@ describe('type', () => {
 			'@class': A,
 			name: string,
 		})
-		const ret = <A>(<unknown>typeinit(tdesc))
+		const ret = typeinit(tdesc) as unknown as A
 		expect(ret).toBeInstanceOf(A)
 		ret.name = 'test'
 		expect(ret.test()).toBe('test')
@@ -2219,7 +2236,7 @@ describe('type', () => {
 		test('the description is invalid', () => {
 			;[null, 1, true, 'test'].forEach((v: any) => {
 				expect(() => {
-					wrapval(<any>v)
+					wrapval(v as any)
 				}).toThrow()
 			})
 		})
@@ -2248,7 +2265,7 @@ describe('type', () => {
 				).name
 			).toBe('test')
 
-			expect(typeinit(int32, <int32>wrapval({}))).toBe(0)
+			expect(typeinit(int32, wrapval({}) as int32)).toBe(0)
 			expect(typeinit(int32, wrapval({}, 1))).toBe(1)
 		})
 
@@ -2260,6 +2277,48 @@ describe('type', () => {
 			expect(ret.name).toBe('')
 			ret.name = wrapval({}, 'test')
 			expect(ret.name).toBe('test')
+		})
+	})
+
+	describe('builtin', () => {
+		test('object', () => {
+			const tdesc = typedef({
+				value: object,
+			})
+			const ret = typeinit(tdesc)
+			expect(ret.value).toBeDefined()
+			ret.value = (void 0)!
+			expect(ret.value).toBeUndefined()
+			ret.value = null!
+			expect(ret.value).toBeNull()
+			ret.value = {}
+			expect(ret.value).toBeInstanceOf(Object)
+			ret.value = [] as any
+			expect(ret.value).toBeInstanceOf(Array)
+			;[true, 1, 'test'].forEach((v) => {
+				expect(() => {
+					ret.value = v as any
+				}).toThrow()
+			})
+		})
+
+		test('array', () => {
+			const tdesc = typedef({
+				value: array,
+			})
+			const ret = typeinit(tdesc)
+			expect(ret.value).toBeDefined()
+			ret.value = (void 0)!
+			expect(ret.value).toBeUndefined()
+			ret.value = null!
+			expect(ret.value).toBeNull()
+			ret.value = []
+			expect(ret.value).toBeInstanceOf(Array)
+			;[{}, true, 1, 'test'].forEach((v: any) => {
+				expect(() => {
+					ret.value = v
+				}).toThrow()
+			})
 		})
 	})
 })

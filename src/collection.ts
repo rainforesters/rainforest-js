@@ -5,23 +5,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { typedef, change, TypeDesc } from './type'
+import { array, change, typedef } from './type'
 
-import { array } from './builtin'
-
-const refMap = new WeakMap<any, Set<any>>()
+const refMap = new WeakMap<unknown[], Set<unknown[]>>()
 
 const syl_raw = Symbol(),
 	syl_CArray = Symbol()
 
 const CArrayHandler = {
-	get(target: any, key: string | number | symbol, receiver: any) {
+	get(target: unknown[], key: PropertyKey, receiver: unknown) {
 		if (key === syl_raw) {
 			return () => target
 		}
 		return Reflect.get(target, key, receiver)
 	},
-	set(target: any, key: string | number | symbol, value: any, receiver: any) {
+	set(target: unknown[], key: PropertyKey, value: unknown, receiver: unknown) {
 		const ret = Reflect.set(target, key, value, receiver)
 		const set = refMap.get(target)
 		if (set) {
@@ -31,7 +29,7 @@ const CArrayHandler = {
 		}
 		return ret
 	},
-	deleteProperty(target: any, key: string | number | symbol) {
+	deleteProperty(target: unknown[], key: PropertyKey) {
 		const ret = Reflect.deleteProperty(target, key)
 		const set = refMap.get(target)
 		if (set) {
@@ -41,7 +39,7 @@ const CArrayHandler = {
 		}
 		return ret
 	},
-	has(target: any, key: string | number | symbol) {
+	has(target: unknown[], key: PropertyKey) {
 		if (key === syl_CArray) {
 			return true
 		}
@@ -54,7 +52,7 @@ const CArrayHandler = {
  *
  * @public
  */
-export const CArray: TypeDesc<unknown[]> = typedef({
+export const CArray = typedef({
 	'@name': 'CArray',
 	'@type': array,
 	'@change': true,
@@ -73,14 +71,14 @@ export const CArray: TypeDesc<unknown[]> = typedef({
 		}
 	},
 	'@retain': (self) => {
-		const raw = (<any>self)[syl_raw]()
+		const raw = (self as unknown as { [syl_raw]: () => unknown[] })[syl_raw]()
 		if (!refMap.has(raw)) {
-			refMap.set(raw, new Set<any>())
+			refMap.set(raw, new Set())
 		}
 		refMap.get(raw)!.add(self)
 	},
 	'@release': (self) => {
-		const raw = (<any>self)[syl_raw]()
+		const raw = (self as unknown as { [syl_raw]: () => unknown[] })[syl_raw]()
 		refMap.get(raw)!.delete(self)
 	},
 })

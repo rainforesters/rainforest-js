@@ -5,14 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ruledef, typedef, typeinit, bool, int32, TypeDesc } from './type'
+import { bool, int32, ruledef, typedef, typeinit, type TypeDesc } from './type'
 
 import { CArray } from './collection'
 
 describe('collection', () => {
 	test('CArray', () => {
 		const tdesc = typedef({
-			arr: <TypeDesc<int32[]>>CArray,
+			arr: CArray as TypeDesc<int32[]>,
 			hash: int32,
 			out: bool,
 		})
@@ -36,7 +36,7 @@ describe('collection', () => {
 			}
 		)
 
-		const arr = typeinit(<TypeDesc<int32[]>>CArray)
+		const arr = typeinit(CArray as TypeDesc<int32[]>)
 		arr[0] = 1
 		delete arr[1]
 
@@ -63,10 +63,10 @@ describe('collection', () => {
 		ret.arr.push(2)
 		expect(ret.hash).toBe(5859944)
 		ret.out = false
-		;(<any>ret.arr).name = 1
+		;(ret.arr as any).name = 1
 		expect('name' in ret.arr).toBe(true)
 		expect(ret.out).toBe(true)
-		delete (<any>ret.arr).name
+		delete (ret.arr as any).name
 		expect('name' in ret.arr).toBe(false)
 		expect(ret.out).toBe(false)
 		expect(ret.arr).toHaveLength(2)

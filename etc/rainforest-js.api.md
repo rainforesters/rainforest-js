@@ -5,6 +5,11 @@
 ```ts
 
 // @public (undocumented)
+export type array<T extends TypeDesc<unknown>> = {
+    [__T__]: T[];
+};
+
+// @public (undocumented)
 export const array: TypeDesc<unknown[]>;
 
 // @public (undocumented)
@@ -17,7 +22,7 @@ export const bool: TypeDesc<bool>;
 export const CArray: TypeDesc<unknown[]>;
 
 // @public
-export function change(obj: Record<any, any>): void;
+export function change(obj: object): void;
 
 // @public (undocumented)
 export type float64 = number | (1 & never[]);
@@ -32,7 +37,7 @@ export type int32 = number | (0 & never[]);
 export const int32: TypeDesc<int32>;
 
 // @public (undocumented)
-export const object: TypeDesc<Record<string, unknown>>;
+export const object: TypeDesc<object>;
 
 // Warning: (ae-forgotten-export) The symbol "StructType" needs to be exported by the entry point index.d.ts
 //
@@ -51,7 +56,7 @@ export const string: TypeDesc<string>;
 // Warning: (ae-forgotten-export) The symbol "_Struct_" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type Struct<T extends StructType> = T & _Struct_;
+export type Struct<T extends StructType> = T & _Struct_<T>;
 
 // Warning: (ae-forgotten-export) The symbol "_structbody_" needs to be exported by the entry point index.d.ts
 //
@@ -87,7 +92,7 @@ export function typeinit<T extends TypeDesc<unknown>>(tdesc: T, literal?: litera
 // @public (undocumented)
 export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U> ? U extends Struct<infer V> ? V extends StructTypeDesc ? Struct<{
     [K in keysof<U>]: U[K] extends infer O ? O extends TypeDesc<unknown> ? typeinit<O> : never : never;
-}> : never : U : never;
+}> : never : U extends array<infer V> ? typeinit<V>[] : U : never;
 
 // @public (undocumented)
 export const unknown: TypeDesc<unknown>;

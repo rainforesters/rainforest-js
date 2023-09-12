@@ -6,5 +6,4 @@
  */
 
 export * from './type'
-export * from './builtin'
 export * from './collection'
