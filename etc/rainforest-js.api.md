@@ -10,7 +10,7 @@ export type array<T extends TypeDesc<unknown>> = {
 }[];
 
 // @public (undocumented)
-export const array: TypeDesc<unknown[]>;
+export const array: TypeDesc<array<TypeDesc<unknown>>>;
 
 // @public (undocumented)
 export type bool = boolean | never;
@@ -19,7 +19,7 @@ export type bool = boolean | never;
 export const bool: TypeDesc<bool>;
 
 // @public
-export const CArray: TypeDesc<unknown[]>;
+export const CArray: TypeDesc<array<TypeDesc<unknown>>>;
 
 // @public
 export function change(obj: object): void;

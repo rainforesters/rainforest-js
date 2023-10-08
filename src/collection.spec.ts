@@ -5,14 +5,22 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { bool, int32, ruledef, typedef, typeinit, type TypeDesc } from './type'
+import {
+	array,
+	bool,
+	int32,
+	ruledef,
+	typedef,
+	typeinit,
+	type TypeDesc,
+} from './type'
 
 import { CArray } from './collection'
 
 describe('collection', () => {
 	test('CArray', () => {
 		const tdesc = typedef({
-			arr: CArray as TypeDesc<int32[]>,
+			arr: CArray as TypeDesc<array<TypeDesc<int32>>>,
 			hash: int32,
 			out: bool,
 		})
@@ -36,7 +44,7 @@ describe('collection', () => {
 			}
 		)
 
-		const arr = typeinit(CArray as TypeDesc<int32[]>)
+		const arr = typeinit(CArray as TypeDesc<array<TypeDesc<int32>>>)
 		arr[0] = 1
 		delete arr[1]
 

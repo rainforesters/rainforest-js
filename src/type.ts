@@ -932,7 +932,7 @@ export type array<T extends TypeDesc<unknown>> = { [__T__]: T }[]
  */
 export const array = typedef({
 	[at_name]: 'array',
-	[at_type]: unknown as TypeDesc<unknown[]>,
+	[at_type]: unknown as TypeDesc<array<TypeDesc<unknown>>>,
 	[at_value]: () => [],
 	[at_verify]: (self) => {
 		if (null !== self && void 0 !== self && !Array.isArray(self)) {
