@@ -133,11 +133,13 @@ describe('collection', () => {
 
 	test('decorate CArray', () => {
 		const tdesc = typedef({
-			'@type': CArray,
-			'@adjust': () => [],
+			test: typedef({
+				'@type': CArray,
+				'@adjust': () => [],
+			}),
 		})
 		expect(() => {
 			typeinit(tdesc)
-		}).toThrow()
+		}).toThrow(/test/)
 	})
 })

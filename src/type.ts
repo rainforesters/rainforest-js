@@ -405,7 +405,14 @@ function TypeDesc_check(
 			} else if (self[syl_meta] & Meta.notnil) {
 				throw Error(fieldError(fieldName, 'must not be nil'))
 			}
-			self[syl_verify]?.(val)
+			try {
+				self[syl_verify]?.(val)
+			} catch (err) {
+				if (err instanceof Error) {
+					err.message = fieldError(fieldName, err.message)
+				}
+				throw err
+			}
 			if (flag & Flag.adjust && self[syl_adjust]) {
 				val = TypeDesc_check(
 					self,
@@ -415,7 +422,14 @@ function TypeDesc_check(
 					fieldName
 				)
 			}
-			self[syl_assert]?.(val)
+			try {
+				self[syl_assert]?.(val)
+			} catch (err) {
+				if (err instanceof Error) {
+					err.message = fieldError(fieldName, err.message)
+				}
+				throw err
+			}
 			break
 		case Kind.decorate: {
 			const ts = self[syl_type]
@@ -441,11 +455,25 @@ function TypeDesc_check(
 				if (t[syl_meta] & Meta.notnil && !isNotnil(val)) {
 					throw Error(fieldError(fieldName, 'must not be nil'))
 				}
-				t[syl_verify]?.(val)
+				try {
+					t[syl_verify]?.(val)
+				} catch (err) {
+					if (err instanceof Error) {
+						err.message = fieldError(fieldName, err.message)
+					}
+					throw err
+				}
 				if (flag & Flag.adjust && t[syl_adjust]) {
 					val = TypeDesc_check2(t, accepted, val, 0, syl_adjust, fieldName)
 				}
-				t[syl_assert]?.(val)
+				try {
+					t[syl_assert]?.(val)
+				} catch (err) {
+					if (err instanceof Error) {
+						err.message = fieldError(fieldName, err.message)
+					}
+					throw err
+				}
 			} while (b)
 			break
 		}
@@ -954,7 +982,7 @@ type _typedef_<T> = T extends infer O
 				Struct<{
 					[K in keysof<O>]: O[K]
 				}>
-		  >
+			>
 	: never
 
 /**
@@ -995,34 +1023,36 @@ export function typedef<T>(desc: Desc<T>, tdesc?: _typedef_<T>): _typedef_<T> {
 	return TypeDesc_define(desc, tdesc) as _typedef_<T>
 }
 
-type literal<T> = T extends Struct<StructType>
-	? {
-			[K in {
-				[K in keyof T]: K extends string ? K : never
-			}[keyof T]]?: literal<T[K]>
-	  }
-	: T
+type literal<T> =
+	T extends Struct<StructType>
+		? {
+				[K in {
+					[K in keyof T]: K extends string ? K : never
+				}[keyof T]]?: literal<T[K]>
+			}
+		: T
 
 /**
  * @public
  */
-export type typeinit<T extends TypeDesc<unknown>> = T extends TypeDesc<infer U>
-	? U extends Struct<infer V>
-		? V extends StructTypeDesc
-			? Struct<{
-					[K in keysof<U>]: U[K] extends infer O
-						? O extends TypeDesc<unknown>
-							? typeinit<O>
+export type typeinit<T extends TypeDesc<unknown>> =
+	T extends TypeDesc<infer U>
+		? U extends Struct<infer V>
+			? V extends StructTypeDesc
+				? Struct<{
+						[K in keysof<U>]: U[K] extends infer O
+							? O extends TypeDesc<unknown>
+								? typeinit<O>
+								: never
 							: never
-						: never
-			  }>
-			: never
-		: U extends never[]
-		? U
-		: U extends array<infer V>
-		? typeinit<V>[]
-		: U
-	: never
+					}>
+				: never
+			: U extends never[]
+				? U
+				: U extends array<infer V>
+					? typeinit<V>[]
+					: U
+		: never
 
 /**
  * 从类型描述生成默认值
@@ -1091,15 +1121,16 @@ export function structbody<T extends TypeDesc<Struct<StructTypeDesc>>>(
 /**
  * @public
  */
-export type structof<T extends Struct<StructType>> = T extends Struct<infer U>
-	? TypeDesc<
-			Struct<{
-				[K in keyof U]: U[K] extends Struct<StructType>
-					? structof<U[K]>
-					: TypeDesc<U[K]>
-			}>
-	  >
-	: never
+export type structof<T extends Struct<StructType>> =
+	T extends Struct<infer U>
+		? TypeDesc<
+				Struct<{
+					[K in keyof U]: U[K] extends Struct<StructType>
+						? structof<U[K]>
+						: TypeDesc<U[K]>
+				}>
+			>
+		: never
 
 /**
  * 返回结构体实例的类型描述
@@ -1435,30 +1466,32 @@ type ObserveDesc = {
 	[at_diff]?: true
 }
 
-type ObserveField<T> = T extends TypeDesc<infer U>
-	? U extends Struct<infer V>
-		? V extends StructTypeDesc
-			?
-					| {
-							[K in keysof<U>]?: ObserveField<U[K]>
-					  }
-					| {
-							[at_or]?: true
-					  }
-					| ObserveDesc
-					| true
-			: never
-		: ObserveDesc | true
-	: never
+type ObserveField<T> =
+	T extends TypeDesc<infer U>
+		? U extends Struct<infer V>
+			? V extends StructTypeDesc
+				?
+						| {
+								[K in keysof<U>]?: ObserveField<U[K]>
+						  }
+						| {
+								[at_or]?: true
+						  }
+						| ObserveDesc
+						| true
+				: never
+			: ObserveDesc | true
+		: never
 
-type observe<T> = T extends TypeDesc<infer U>
-	? {
-			[K in keysof<U>]?: ObserveField<U[K]>
-	  } & {
-			[at_name]?: unknown
-			[at_or]?: true
-	  }
-	: never
+type observe<T> =
+	T extends TypeDesc<infer U>
+		? {
+				[K in keysof<U>]?: ObserveField<U[K]>
+			} & {
+				[at_name]?: unknown
+				[at_or]?: true
+			}
+		: never
 
 /**
  * 定义规则

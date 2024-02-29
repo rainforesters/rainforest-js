@@ -666,6 +666,41 @@ describe('type', () => {
 		}).toThrow()
 	})
 
+	test('verify struct', () => {
+		const tdesc = typedef({
+			test: typedef({
+				value: int32,
+				'@verify': (self) => {
+					if (self.value === 0) {
+						throw Error('value cannot be 0')
+					}
+				},
+				'@assert': (self) => {
+					if (self.value === 1) {
+						throw Error('value cannot be 1')
+					}
+				},
+			}),
+		})
+		expect(() => {
+			typeinit(tdesc)
+		}).toThrow(/test.*0/)
+		expect(() => {
+			typeinit(tdesc, {
+				test: {
+					value: 1,
+				},
+			}).test.value
+		}).toThrow(/test.*1/)
+		expect(
+			typeinit(tdesc, {
+				test: {
+					value: 2,
+				},
+			}).test.value
+		).toBe(2)
+	})
+
 	test('verify the decorated type', () => {
 		expect(() => {
 			typeinit(
