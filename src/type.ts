@@ -92,6 +92,10 @@ function isFunc(v: unknown): v is () => void {
 	return typeof v === 'function'
 }
 
+function isSymbol(v: unknown): v is symbol {
+	return typeof v === 'symbol'
+}
+
 function isString(v: unknown): v is string {
 	return typeof v === 'string'
 }
@@ -1555,18 +1559,21 @@ export function ruledef<T extends TypeDesc<Struct<StructTypeDesc>>>(
 	}
 	if (!name) {
 		throw Error('name is not defined')
-	} else if ((!isString(name) && !isObject(name)) || isWrapValue(name)) {
+	} else if (
+		(!isString(name) && !isSymbol(name) && !isObject(name)) ||
+		isWrapValue(name)
+	) {
 		throw Error('name is invalid')
 	}
 	if (!tdesc[syl_observers]) {
 		tdesc[syl_observers] = new Map<unknown, ObserveFieldNodeDesc>()
 	}
 	if (tdesc[syl_observers].has(name)) {
-		throw Error(`rule '${name}' has already been defined`)
+		throw Error(`rule '${String(name)}' has already been defined`)
 	} else if (tdesc[syl_kind] === Kind.decorate) {
 		for (const v of tdesc[syl_type]) {
 			if (v[syl_observers]?.has(name)) {
-				throw Error(`rule '${name}' has already been defined`)
+				throw Error(`rule '${String(name)}' has already been defined`)
 			}
 		}
 	}

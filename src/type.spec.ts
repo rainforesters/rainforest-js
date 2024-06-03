@@ -1505,15 +1505,27 @@ describe('type', () => {
 				)
 			}).toThrow()
 		})
-		ruledef(
-			tdesc,
-			'',
-			{
-				'@name': 'rule',
-				input: true,
-			},
-			(self) => self
-		)
+		;['rule', Symbol(), {}].forEach((v: any) => {
+			ruledef(
+				tdesc,
+				v,
+				{
+					input: true,
+				},
+				(self) => self
+			)
+		})
+		;['rule2', Symbol(), {}].forEach((v: any) => {
+			ruledef(
+				tdesc,
+				'',
+				{
+					'@name': v,
+					input: true,
+				},
+				(self) => self
+			)
+		})
 	})
 
 	test('observation field is required', () => {
