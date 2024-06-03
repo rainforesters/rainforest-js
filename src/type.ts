@@ -1259,14 +1259,8 @@ function VirtualValue_set(
 	}
 	for (const n of observers) {
 		if (!n.diff || diff) {
-			if (!n.notnil || notnil) {
-				if (n.children) {
-					if (notnil && ObserveNode_check(n, notnil)) {
-						ObserveNode_dispatch(n, fieldName)
-					}
-				} else {
-					ObserveNode_dispatch(n, fieldName)
-				}
+			if (ObserveNode_check(n, notnil)) {
+				ObserveNode_dispatch(n, fieldName)
 			}
 		}
 	}
@@ -1305,13 +1299,17 @@ function ObserveNode_check(self: ObserveNode, notnil: boolean) {
 			let bitmap = 0
 			const { test, or } = self
 			for (const n of children) {
-				if (!ObserveNode_check(n, isNotnil(n.virtual.value))) {
+				if (ObserveNode_check(n, isNotnil(n.virtual.value))) {
+					if (or) {
+						return true
+					}
+					bitmap |= 1 << n.bit
+				} else if (!or) {
 					return false
 				}
-				bitmap |= 1 << n.bit
-				if (bitmap === test || or) {
-					return true
-				}
+			}
+			if (bitmap === test) {
+				return true
 			}
 		}
 	} else if (!self.notnil || notnil) {

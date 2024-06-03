@@ -1088,7 +1088,7 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2-3')
 	})
 
-	test('define two rules', () => {
+	test('define multiple rules', () => {
 		const A = typedef({
 			arg1: int32,
 			arg2: int32,
@@ -1257,7 +1257,7 @@ describe('type', () => {
 		expect(ret.out).toBe('10-20')
 	})
 
-	test('define a rule use logical OR', () => {
+	test('use the logical OR to define a rule', () => {
 		const tdesc = typedef({
 			arg1: int32,
 			arg2: int32,
@@ -1285,6 +1285,86 @@ describe('type', () => {
 		expect(ret.out).toBe('1-2-0')
 		ret.arg3 = 3
 		expect(ret.out).toBe('1-2-3')
+	})
+
+	test('use the logical OR in the substructure to define a rule', () => {
+		const A = typedef({
+			value: int32,
+		})
+		const Sub = typedef({
+			arg1: A,
+			arg2: A,
+		})
+		const tdesc = typedef({
+			sub: Sub,
+			out: string,
+		})
+		ruledef(
+			tdesc,
+			'sub',
+			{
+				sub: {
+					'@or': true,
+					arg1: {
+						value: true,
+					},
+					arg2: {
+						value: true,
+					},
+				},
+			},
+			(self) => {
+				self.out = `${self.sub.arg1?.value || 0}-${self.sub.arg2?.value || 0}`
+			}
+		)
+		const ret = typeinit(tdesc)
+		expect(ret.out).toBe('')
+		ret.sub.arg1.value = 1
+		expect(ret.out).toBe('1-0')
+		ret.sub.arg2.value = 1
+		expect(ret.out).toBe('1-1')
+
+		ret.sub.arg1 = typeinit(A)
+		expect(ret.out).toBe('0-1')
+		ret.sub.arg1 = typeinit(A, { value: 2 })
+		expect(ret.out).toBe('2-1')
+		ret.sub.arg2 = typeinit(A, { value: 2 })
+		expect(ret.out).toBe('2-2')
+
+		ret.sub = typeinit(Sub)
+		expect(ret.out).toBe('0-0')
+
+		ret.sub = typeinit(Sub, {
+			arg1: {
+				value: 3,
+			},
+			arg2: null!,
+		})
+		expect(ret.out).toBe('3-0')
+
+		ret.sub = typeinit(Sub, {
+			arg1: null!,
+			arg2: {
+				value: 3,
+			},
+		})
+		expect(ret.out).toBe('0-3')
+
+		ret.sub = typeinit(Sub, {
+			arg1: {
+				value: 4,
+			},
+			arg2: {
+				value: 4,
+			},
+		})
+		expect(ret.out).toBe('4-4')
+
+		ret.sub = typeinit(Sub, {
+			arg1: null!,
+			arg2: null!,
+		})
+		expect(ret.out).toBe('4-4')
 	})
 
 	test('define a rule on a decorated struct', () => {
