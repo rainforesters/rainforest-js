@@ -1,13 +1,12 @@
 .DS_Store
 .idea
 .vscode
+.temp
 
 *.log*
 
 coverage
 dist
 node_modules
+cache
 temp
-**/.vuepress/.temp
-**/.vuepress/.cache
-**/.vuepress/dist

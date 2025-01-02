@@ -1,72 +1,43 @@
-# 快速开始
+# 快速开始 {#getting-started}
 
-这里通过一个简单的示例，来快速掌握结构体的用法。体验数据结构化编程的魅力。
+## 安装 {#installation}
 
-## 定义结构体
+```sh [npm]
+npm add imsure
+```
 
-首先来定义一个简单的结构体。
+## 马上学会 {#got-it}
 
-```ts
-const MyStruct = typedef({
-  name: string,
-  sex: bool,
-  age: int32,
-  intro: string,
+我们先做一个美丽的梦，假设程序是一个 JSON 结构，只有字段，虽然没有函数，但是有神奇力量，让字段不停变化，让程序始终正确地运行，绝不出错。
+
+我们玩一玩多米诺骨牌，就能掌握如何做到。  
+摆 3 个骨牌，然后推倒第一个。
+
+<!-- prettier-ignore-start -->
+```ts{7-9,11-13}
+const Domino = typedef({
+    board1: string,
+    board2: string,
+    board3: string,
 })
+
+ruledef(Domino, 'board2', { board1: true }, (self) => {
+    self.board2 = 'push'
+})
+
+ruledef(Domino, 'board3', { board2: true }, (self) => {
+    self.board3 = 'push'
+})
+
+const domino = typeinit(Domino)
+domino.board1 = 'push'
 ```
+<!-- prettier-ignore-end -->
 
-## 初始化结构体
+恭喜！你已经学会了。
 
-然后初始化我们定义的结构体。  
-所有字段都会自动初始化为类型的默认值。
+写法就这么简单，要想更好掌握，你还得了解一点新思想，跳出传统的思维方式。  
+打个比方，我们都受孔子的影响，但是孔子并没亲自教我们，而是我们自己接受孔子的影响，因为孔子根本就不知道我们是谁，他也不需要知道啊，你琢磨琢磨对不对。  
+回来看上面多米诺的例子，你也应该这么想：不是第一个骨牌推倒的第二个，而是第二个观察到第一个倒了之后，自己主动倒的，第三个也是如此。这样，每个只做好自己就行，根本不用关心会影响到谁，那是他们自己的事。
 
-```ts
-const myself = typeinit(MyStruct)
-console.log(myself)
-// output: { name: '', sex: false, age: 0, intro: '' }
-```
-
-## 定义规则，实现自动化
-
-先为结构体定义规则。  
-期望当名字、性别、年龄发生变化时，自动生成个人介绍。
-
-```ts
-ruledef(
-  MyStruct,
-  'generateIntroduction',
-  {
-    // 声明需要观察的字段
-    name: true,
-    sex: true,
-    age: true,
-  },
-  (self: typeinit<typeof MyStruct>) => {
-    self.intro = `My name is ${self.name}, I am a ${
-      self.sex ? 'girl' : 'boy'
-    } and I am ${self.age} years old.`
-  }
-)
-```
-
-然后初始化结构体，并为字段赋值。
-
-```ts
-const myself = typeinit(MyStruct)
-myself.name = 'Amy'
-myself.sex = true
-myself.age = 18
-// 此时，预期的名字、性别、年龄发生变化了，
-// 将会自动执行规则，生成个人介绍。
-console.log(myself.intro)
-// output: My name is Amy, I am a girl and I am 18 years old.
-```
-
-我们并没有手动执行规则来生成个人介绍，一切都是自动完成的。  
-这让我们能专注于编排数据结构，即可获得目标结果，而不用控制复杂的过程。
-
-::: warning 提示
-规则是何时执行的？  
-当预期的最后一个字段变化时，会自动执行规则。  
-也就是表明：**当预期的字段数据都准备好时，会自动执行规则。**
-:::
+理解了上述之后，是不是豁然开朗了。觉醒吧，朋友！
