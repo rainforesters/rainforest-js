@@ -686,7 +686,7 @@ describe('type', () => {
 			typeinit(tdesc)
 		}).toThrow(/test.*0/)
 		expect(() => {
-			typeinit(tdesc, {
+			return typeinit(tdesc, {
 				test: {
 					value: 1,
 				},

@@ -1,5 +1,6 @@
 import terser from '@rollup/plugin-terser'
 import path from 'path'
+import { defineConfig } from 'rollup'
 import ts from 'rollup-plugin-typescript2'
 import pkg from './package.json' assert { type: 'json' }
 
@@ -7,17 +8,17 @@ const outputCfg = {
 	sourcemap: true,
 }
 
-export default {
+export default defineConfig({
 	input: 'src/index.ts',
 	output: [
 		{
-			format: 'cjs',
-			file: pkg.main,
+			format: 'es',
+			file: pkg.module,
 			...outputCfg,
 		},
 		{
-			format: 'es',
-			file: pkg.module,
+			format: 'cjs',
+			file: pkg.main,
 			...outputCfg,
 		},
 		{
@@ -29,4 +30,4 @@ export default {
 		},
 	],
 	plugins: [ts()],
-}
+})

@@ -573,7 +573,7 @@ function TypeDesc_prepare(
 			let virtual: VirtualValue
 			let map = struct[syl_observers]
 			if (map) {
-				virtual = map.values().next().value.virtual
+				virtual = map.values().next().value!.virtual
 			} else {
 				virtual = {
 					name: '',
@@ -1627,7 +1627,7 @@ export function outcome(
 	if (!isStruct(struct)) {
 		throw TypeError('type is not struct')
 	}
-	const node: ObserveNode = name
+	const node = name
 		? struct[syl_observers]?.get(name)
 		: struct[syl_observers]?.values().next().value
 	if (!node) {

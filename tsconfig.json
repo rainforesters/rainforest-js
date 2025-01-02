@@ -11,5 +11,5 @@
     "strict": true,
     "sourceMap": true
   },
-  "exclude": ["__tests__", "**/*.test.ts", "**/*.spec.ts"]
+  "include": ["src/**/*.ts"]
 }
